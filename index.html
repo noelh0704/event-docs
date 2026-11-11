@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>活動文件公版平台</title>
+<meta name="description" content="活動資料填一次，行前通知、主持人稿、操作手冊、備品清單一鍵產出。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%276%27 fill=%27%23d9772b%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="brand-mark">文</span>
+    <div>
+      <div class="brand-name">活動文件公版平台</div>
+      <div class="brand-sub">一份活動資料，產出整套執行文件</div>
+    </div>
+  </div>
+  <div class="top-actions">
+    <span id="saveState" class="save-state">已自動儲存於此瀏覽器</span>
+    <button class="btn ghost" data-act="sample">載入範例</button>
+    <button class="btn ghost" data-act="new">新專案</button>
+    <button class="btn ghost" data-act="importProject">匯入專案</button>
+    <button class="btn ghost" data-act="exportProject">匯出專案</button>
+    <button class="btn ghost" data-act="settings">設定</button>
+    <input type="file" id="projectFile" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<main class="layout">
+  <nav class="nav" id="nav" aria-label="章節"></nav>
+
+  <section class="form-pane" aria-label="填寫區">
+    <div class="pane-head">
+      <h1 id="sectionTitle"></h1>
+      <div id="sectionActions" class="pane-actions"></div>
+    </div>
+    <p id="sectionHint" class="hint"></p>
+    <div id="form"></div>
+  </section>
+
+  <section class="preview-pane" aria-label="文件預覽">
+    <div class="preview-bar">
+      <div class="tabs" id="docTabs" role="tablist"></div>
+      <div class="preview-tools">
+        <label class="aud" id="audWrap">對象
+          <select id="audience"></select>
+        </label>
+        <button class="btn" data-act="copy">複製文字</button>
+        <button class="btn" data-act="print">列印／PDF</button>
+        <button class="btn" data-act="csv" id="csvBtn">匯出 CSV</button>
+        <button class="btn primary" data-act="word">匯出 Word</button>
+      </div>
+    </div>
+    <div class="paper-wrap"><article id="page" class="paper"></article></div>
+  </section>
+</main>
+
+<!-- 設定 -->
+<dialog id="dlgSettings" class="dlg">
+  <form method="dialog" id="settingsForm">
+    <h2>設定</h2>
+    <fieldset>
+      <legend>AI 代寫連線方式</legend>
+      <label class="radio"><input type="radio" name="aiMode" value="proxy"> 公司中繼服務（建議，同事共用）</label>
+      <label class="radio"><input type="radio" name="aiMode" value="direct"> 個人金鑰（只存在這台電腦的瀏覽器）</label>
+    </fieldset>
+    <div data-mode="proxy">
+      <label>中繼服務網址<input type="url" name="proxyUrl" placeholder="https://script.google.com/macros/s/…/exec"></label>
+      <label>存取碼<input type="password" name="accessCode" autocomplete="off"></label>
+    </div>
+    <div data-mode="direct">
+      <label>Claude API 金鑰<input type="password" name="apiKey" autocomplete="off" placeholder="sk-ant-…"></label>
+      <p class="hint">金鑰只會存在這個瀏覽器，不會上傳到 GitHub。請勿在公用電腦使用。</p>
+    </div>
+    <label>模型（留空使用預設）<input type="text" name="model" placeholder=""></label>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">取消</button>
+      <button class="btn primary" value="save">儲存</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- AI 匯入 -->
+<dialog id="dlgImport" class="dlg wide">
+  <form method="dialog">
+    <h2>AI 匯入活動資料</h2>
+    <p class="hint">貼上企劃書、服務建議書、舊的工作手冊或流程表文字，AI 會整理成活動基本資料、分組、貴賓與流程。貼上的文字會送到 AI 服務處理。</p>
+    <textarea id="importText" rows="14" placeholder="在此貼上文字…"></textarea>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">取消</button>
+      <button class="btn primary" value="go">開始整理</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- 確認 -->
+<dialog id="dlgConfirm" class="dlg">
+  <form method="dialog">
+    <h2 id="confirmTitle">請確認</h2>
+    <p id="confirmText"></p>
+    <div class="dlg-actions">
+      <button class="btn" value="cancel">取消</button>
+      <button class="btn primary" value="ok" id="confirmOk">確定</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="busy" class="busy" hidden><div class="busy-box"><div class="spinner"></div><div id="busyText">AI 撰寫中，約需 20 至 60 秒…</div></div></div>
+<div id="toast" class="toast" hidden role="status"></div>
+
+<script src="vendor/docx.umd.js"></script>
+<script src="js/config.js"></script>
+<script src="js/sample.js"></script>
+<script src="js/templates.js"></script>
+<script src="js/render-html.js"></script>
+<script src="js/render-docx.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
