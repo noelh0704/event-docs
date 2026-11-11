@@ -321,7 +321,13 @@
   }
 
   // --- 社群貼文 ---
-  // 格式依公司慣用寫法：一篇一個主題（第 N 篇），短句分行，結尾放主題標籤與標記單位，並列出搭配圖卡
+  // 格式依公司慣用寫法：一篇一個主題（第 N 篇），短句分行，
+  // 結尾先放標記單位、再放主題標籤（該篇標籤＋系列固定標籤），並列出搭配圖卡
+  function mergeTags(a, b) {
+    const seen = {}, out = [];
+    `${a || ''} ${b || ''}`.split(/\s+/).filter(Boolean).forEach((t) => { if (!seen[t]) { seen[t] = 1; out.push(t); } });
+    return out.join(' ');
+  }
   function buildPosts(ev) {
     const b = [];
     const list = (ev.posts || []).filter((s) => has(s.body) || has(s.stage));
@@ -335,8 +341,9 @@
       const body = String(s.body || '').split('\n').map((x) => x.trim());
       if (body.some(has)) b.push({ t: 'p', text: body.join('\n').replace(/\n{3,}/g, '\n\n') });
       else b.push({ t: 'note', text: '（待填）' });
-      if (has(s.tags)) b.push({ t: 'p', text: s.tags });
       if (has(ev.postMentions)) b.push({ t: 'p', text: ev.postMentions });
+      const tags = mergeTags(s.tags, ev.postTags);
+      if (has(tags)) b.push({ t: 'p', text: tags });
       if (lines(s.visual).length) {
         b.push({ t: 'h2', text: '搭配圖卡' });
         b.push({ t: 'list', ordered: true, items: lines(s.visual) });
