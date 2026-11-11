@@ -8,7 +8,7 @@
     switch (b.t) {
       case 'h1': return `<h2 class="d-h1">${esc(b.text)}</h2>`;
       case 'h2': return `<h3 class="d-h2">${esc(b.text)}</h3>`;
-      case 'p': return `<p>${br(b.text)}</p>`;
+      case 'p': return `<p class="${b.indent ? 'd-indent ' : ''}${b.center ? 'd-center ' : ''}${b.bold ? 'd-bold' : ''}">${br(b.text)}</p>`;
       case 'note': return `<p class="d-note">${br(b.text)}</p>`;
       case 'list': {
         const tag = b.ordered ? 'ol' : 'ul';
@@ -32,7 +32,7 @@
   }
 
   function render(model) {
-    let html = `<h1 class="d-title">${esc(model.title)}</h1><p class="d-subtitle">${esc(model.subtitle)}</p>`;
+    let html = (model.pretitle ? `<p class="d-pretitle">${esc(model.pretitle)}</p>` : '') + `<h1 class="d-title">${esc(model.title)}</h1>` + (model.subtitle ? `<p class="d-subtitle">${esc(model.subtitle)}</p>` : '<p class="d-subtitle"></p>');
     if (model.toc) {
       const heads = model.blocks.filter((b) => b.t === 'h1' || b.t === 'h2');
       html += `<div class="d-toc"><div class="d-toc-title">目錄</div>${heads.map((h) => `<div class="d-toc-${h.t}">${esc(h.text)}</div>`).join('')}<div class="d-toc-hint">匯出 Word 後為可更新的正式目錄（含頁碼）</div></div>`;

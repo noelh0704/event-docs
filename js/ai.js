@@ -72,6 +72,39 @@ ${text}`,
 活動資料：${eventBrief(ev)}`,
   };
 
+  TASKS.press = (ev, type) => {
+    const p = (ev.press && ev.press[type]) || {};
+    const label = root.EDTemplates.PRESS_TYPES[type].label;
+    return `請為下列活動撰寫「${label}」新聞稿。
+輸出 JSON：{"headline":"主標，20 字內","subhead":"副標，30 字內","body":["內文段落，4 至 5 段"],"captions":["照片圖說，3 項"]}
+寫作要求：
+- 採政府機關新聞稿體例。第一段交代主辦單位、活動名稱、時間、地點與重點；${type === 'pre' ? '事前稿著重活動亮點、參與方式、交通與報名資訊，吸引民眾參加。' : '事後稿描述現場實況、出席貴賓、活動亮點與成果，最後帶到後續活動或延伸資訊。'}
+- 可草擬一段主辦單位長官的引述（「○○○表示，……」），並在該段結尾加上（引述內容待確認）。
+- 出席人數、參與人次等數據若「補充資訊」沒有提供，一律用「○○」表示，不可自行編造。
+- 不寫誇大不實的形容，結尾不需要寫敬請刊登字樣。
+補充資訊（亮點、現場數據、想強調的重點）：${p.highlights || '（未提供）'}
+活動資料：${eventBrief(ev)}`;
+  };
+
+  TASKS.speech = (ev) => `請為下列活動的致詞人撰寫致詞稿。
+輸出 JSON：{"speeches":[{"index":致詞人的 index,"body":["致詞稿段落"]}]}
+寫作要求：
+- 開頭依序問候在場貴賓（依提供的貴賓名單，姓名不明用○○○）與現場來賓。
+- 內容依該致詞人的「重點」展開；沒有提供重點時，寫歡迎與感謝、活動緣起與意義、對未來的期許。
+- 口語、適合現場念，每分鐘約 200 字，依「分鐘」控制長度；結尾以「謝謝大家」作結。
+- 不可編造政績數字或未提供的事實。
+致詞人：${JSON.stringify((ev.speeches || []).map((s, i) => ({ index: i, 致詞人: s.speaker, 分鐘: s.minutes || '3', 重點: s.points })))}
+活動資料：${eventBrief(ev)}`;
+
+  TASKS.posts = (ev) => `請為下列活動規劃並撰寫社群貼文。
+輸出 JSON：{"posts":[{"platform":"Facebook 或 Instagram","stage":"活動預告／倒數加催／活動當日／活動花絮","date":"建議曝光日期，例如 活動前 10 天","body":"貼文文案，段落之間用換行","tags":"主題標籤，以空白分隔","visual":"建議搭配的素材說明"}]}
+寫作要求：
+- 共 6 則：Facebook 4 則（預告、倒數加催、當日、花絮），Instagram 2 則（預告、花絮）。
+- Facebook 文案 80 至 150 字，開頭第一句要能吸引停留，內含時間地點；Instagram 文案較短、語氣更輕鬆。
+- 可適度使用表情符號，每則不超過 4 個；主題標籤 3 至 5 個，須包含活動名稱。
+- 花絮貼文中的人數與成果若未提供，用「○○」表示。
+活動資料：${eventBrief(ev)}`;
+
   function parseJSON(text) {
     let s = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
     const a = s.indexOf('{'), b = s.lastIndexOf('}');

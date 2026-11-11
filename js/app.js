@@ -6,6 +6,11 @@
   const clone = (o) => JSON.parse(JSON.stringify(o));
 
   // ---------- 資料 ----------
+  function blankPress() {
+    const o = {};
+    Object.keys(T.PRESS_TYPES).forEach((k) => (o[k] = { issuer: '', date: '', contact: '', headline: '', subhead: '', highlights: '', body: '', closing: '', captions: '' }));
+    return o;
+  }
   function blankEvent() {
     const notices = {};
     Object.keys(T.AUDIENCES).forEach((k) => (notices[k] = { intro: '', notes: '', bring: '', closing: '' }));
@@ -15,7 +20,8 @@
       checkinTime: '', checkinPlace: '', staffCall: '', transport: '',
       contact: { name: '', phone: '', onsite: '', email: '' }, venueMap: null,
       teams: [], vips: [], schedule: [], notices, mc: { host: '', adlibs: '' },
-      sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [], _ver: {},
+      sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [],
+      press: blankPress(), speeches: [], posts: [], _ver: {},
     };
   }
   // 補齊缺少的欄位（舊版專案檔或 AI 匯入後使用）
@@ -25,7 +31,10 @@
     out.contact = Object.assign({ name: '', phone: '', onsite: '', email: '' }, (e && e.contact) || {});
     out.mc = Object.assign({ host: '', adlibs: '' }, (e && e.mc) || {});
     out.notices = Object.assign(blankEvent().notices, (e && e.notices) || {});
-    ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
+    const bp = blankPress(), ep = (e && e.press) || {};
+    Object.keys(bp).forEach((k) => (bp[k] = Object.assign(bp[k], ep[k] || {})));
+    out.press = bp;
+    ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies', 'speeches', 'posts'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     out.schedule.forEach((r) => { if (r.script == null) r.script = ''; if (r.ops == null) r.ops = ''; });
     if (!out._ver || typeof out._ver !== 'object') out._ver = {};
     return out;
@@ -39,7 +48,7 @@
 
   let ev = normalize(readStore(CONFIG.storage.project) || clone(SAMPLE_EVENT));
   let settings = Object.assign({ aiMode: CONFIG.ai.defaultMode, proxyUrl: '', accessCode: '', apiKey: '', model: '' }, readStore(CONFIG.storage.settings) || {});
-  const ui = { section: 'basic', doc: 'notice', audience: 'attendee' };
+  const ui = { section: 'basic', doc: 'notice', audience: 'attendee', pressType: 'pre' };
 
   const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
   function setPath(obj, path, val) {
@@ -114,6 +123,28 @@
           f('area', '區域'), f('item', '項目'), f('qty', '數量'), f('unit', '規格'), f('note', '備註', { full: true }),
         ] },
       ] },
+    { id: 'press', group: '文件', label: '新聞稿', doc: 'press', hint: '先在右上角選「事前稿」或「事後稿」。內文一行一段；發稿單位留空會帶入主辦單位。', ai: 'press', aiLabel: 'AI 撰寫新聞稿',
+      parts: () => { const k = `press.${ui.pressType}`; return [{ type: 'fields', fields: [
+        f(`${k}.issuer`, '發稿單位（留空用主辦單位）'), f(`${k}.date`, '發布日期'),
+        f(`${k}.contact`, '新聞聯絡', { wide: true }),
+        f(`${k}.headline`, '主標', { wide: true }), f(`${k}.subhead`, '副標', { wide: true }),
+        f(`${k}.highlights`, '補充資訊：亮點、現場數據（給 AI 參考，不會印出）', { type: 'textarea', wide: true }),
+        f(`${k}.body`, '內文（一行一段）', { type: 'textarea', wide: true, rows: 12 }),
+        f(`${k}.captions`, '照片圖說（一行一項）', { type: 'textarea', wide: true }),
+        f(`${k}.closing`, '結尾（留空用預設）', { wide: true }),
+      ] }]; } },
+    { id: 'speech', group: '文件', label: '致詞稿', doc: 'speech', hint: '一位致詞人一列；重點一行一項，AI 會依重點與分鐘數撰寫。', ai: 'speech', aiLabel: 'AI 撰寫致詞稿',
+      parts: () => [{ type: 'rows', path: 'speeches', blank: { speaker: '', minutes: '3', points: '', body: '' }, grid: '3fr 1fr', cols: [
+        f('speaker', '致詞人（單位＋姓名＋職稱）'), f('minutes', '分鐘'),
+        f('points', '重點（給 AI 參考，不會印出）', { type: 'textarea', full: true }),
+        f('body', '致詞稿（一行一段）', { type: 'textarea', full: true, rows: 8 }),
+      ] }] },
+    { id: 'posts', group: '文件', label: '社群貼文', doc: 'posts', hint: '一則貼文一列。寫好後可用「複製文字」貼到排程工具。', ai: 'posts', aiLabel: 'AI 規劃並撰寫貼文',
+      parts: () => [{ type: 'rows', path: 'posts', blank: { platform: 'Facebook', stage: '', date: '', body: '', tags: '', visual: '' }, grid: '1fr 1fr 1fr', cols: [
+        f('platform', '平台'), f('stage', '階段'), f('date', '曝光日期'),
+        f('body', '文案', { type: 'textarea', full: true, rows: 6 }),
+        f('tags', '主題標籤', { full: true }), f('visual', '素材說明', { full: true }),
+      ] }] },
   ];
   const sectionById = (id) => SECTIONS.find((s) => s.id === id);
 
@@ -161,7 +192,7 @@
   }
   function renderForm() {
     const s = sectionById(ui.section);
-    $('#sectionTitle').textContent = s.label + (s.id === 'notice' ? `｜${T.AUDIENCES[ui.audience].label}` : '');
+    $('#sectionTitle').textContent = s.label + (s.id === 'notice' ? `｜${T.AUDIENCES[ui.audience].label}` : s.id === 'press' ? `｜${T.PRESS_TYPES[ui.pressType].label}` : '');
     $('#sectionHint').textContent = s.hint || '';
     $('#sectionActions').innerHTML = s.ai ? `<button class="btn ai" data-act="ai" data-task="${s.ai}">${s.aiLabel}</button>` : '';
     $('#form').innerHTML = s.parts().map(partHTML).join('');
@@ -169,11 +200,18 @@
 
   // ---------- 畫面：預覽 ----------
   function currentModel() {
-    return T.build(ui.doc, ev, { audience: ui.audience, company: CONFIG.company.name });
+    return T.build(ui.doc, ev, { audience: ui.audience, pressType: ui.pressType, company: CONFIG.company.name });
   }
   function renderPreview() {
     $('#docTabs').innerHTML = Object.keys(T.DOCS).map((k) => `<button role="tab" data-doc="${k}" aria-selected="${k === ui.doc}">${T.DOCS[k].label}</button>`).join('');
-    $('#audWrap').style.display = ui.doc === 'notice' ? '' : 'none';
+    // 「對象／類型」選單：行前通知選對象、新聞稿選事前或事後
+    const opts = ui.doc === 'notice' ? T.AUDIENCES : ui.doc === 'press' ? T.PRESS_TYPES : null;
+    $('#audWrap').style.display = opts ? '' : 'none';
+    if (opts) {
+      const cur = ui.doc === 'notice' ? ui.audience : ui.pressType;
+      $('#audLabel').textContent = ui.doc === 'notice' ? '對象' : '類型';
+      $('#audience').innerHTML = Object.keys(opts).map((k) => `<option value="${k}"${k === cur ? ' selected' : ''}>${opts[k].label}</option>`).join('');
+    }
     $('#csvBtn').style.display = ui.doc === 'supplies' ? '' : 'none';
     $('#page').innerHTML = window.EDRenderHTML.render(currentModel());
   }
@@ -267,6 +305,15 @@
     supplies(r) {
       if (Array.isArray(r.supplies) && r.supplies.length) ev.supplies = r.supplies.map((s) => ({ area: s.area || '', item: s.item || '', qty: String(s.qty == null ? '' : s.qty), unit: s.unit || '', note: s.note || '' }));
     },
+    press(r) {
+      const p = ev.press[ui.pressType];
+      p.headline = r.headline || p.headline; p.subhead = r.subhead || p.subhead;
+      p.body = join(r.body); p.captions = join(r.captions);
+    },
+    speech(r) { (r.speeches || []).forEach((s) => { if (ev.speeches[s.index]) ev.speeches[s.index].body = join(s.body); }); },
+    posts(r) {
+      if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: s.visual || '' }));
+    },
   };
   async function runAI(task, arg) {
     busy(true, 'AI 撰寫中，約需 20 至 60 秒…');
@@ -286,8 +333,9 @@
       return;
     }
     if (!ev.name.trim() || !ev.schedule.length) { toast('請先填寫活動名稱與流程表，AI 才有依據', true); return; }
+    if (task === 'speech' && !ev.speeches.length) { toast('請先新增至少一位致詞人', true); return; }
     const ok = await ask('AI 代寫', 'AI 產生的內容會取代這份文件目前的對應欄位。活動名稱、流程、分組與貴賓名單會送到 AI 服務處理（不含聯絡電話與信箱）。', '開始撰寫');
-    if (ok) runAI(task, ui.audience);
+    if (ok) runAI(task, task === 'press' ? ui.pressType : ui.audience);
   }
 
   // ---------- 設定 ----------
@@ -331,7 +379,7 @@
     if (path && e.target.closest('#form')) { setPath(ev, path, e.target.value); touch(); }
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'audience') { ui.audience = e.target.value; renderForm(); renderPreview(); }
+    if (e.target.id === 'audience') { if (ui.doc === 'press') ui.pressType = e.target.value; else ui.audience = e.target.value; renderForm(); renderPreview(); }
     if (e.target.id === 'imgFile' && e.target.files[0]) loadImage(e.target.files[0]);
     if (e.target.id === 'projectFile' && e.target.files[0]) {
       const reader = new FileReader();
@@ -377,6 +425,5 @@
   });
 
   // ---------- 啟動 ----------
-  $('#audience').innerHTML = Object.keys(T.AUDIENCES).map((k) => `<option value="${k}">${T.AUDIENCES[k].label}</option>`).join('');
   renderAll();
 })();

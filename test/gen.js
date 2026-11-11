@@ -7,9 +7,9 @@ const T = require('../js/templates.js'); const R = require('../js/render-docx.js
 ev.venueMap = { src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAAA8CAIAAAAfXYiZAAAAR0lEQVR4nO3QMQEAAAjDMMC/5yFjRxMFfXpJijfXgE/MMjPLzCwzs8zMMjPLzCwzs8zMMjPLzCwzs8zMMjPLzCwzs8zMsgNQEwJ1qv3I3QAAAABJRU5ErkJggg==', w: 100, h: 60 };
 fs.mkdirSync('out', { recursive: true });
 (async () => {
-  const jobs = [['notice', 'attendee'], ['notice', 'staff'], ['mc'], ['manual'], ['supplies']];
+  const jobs = [['notice', 'attendee'], ['notice', 'staff'], ['mc'], ['manual'], ['supplies'], ['press', 'post'], ['speech'], ['posts']];
   for (const [d, a] of jobs) {
-    const m = T.build(d, ev, { audience: a, company: CONFIG.company.name });
+    const m = T.build(d, ev, { audience: a, pressType: a, company: CONFIG.company.name });
     fs.writeFileSync(path.join('out', `${d}${a ? '-' + a : ''}.docx`), await R.toBuffer(m));
     if (d === 'notice' && a === 'attendee') fs.writeFileSync('out/notice.txt', T.toText(m));
   }

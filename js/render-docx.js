@@ -92,7 +92,12 @@
       model.blocks.forEach((b) => {
         if (b.t === 'h1') out.push(new docx.Paragraph({ heading: docx.HeadingLevel.HEADING_1, children: [new docx.TextRun({ text: b.text })] }));
         else if (b.t === 'h2') out.push(new docx.Paragraph({ heading: docx.HeadingLevel.HEADING_2, children: [new docx.TextRun({ text: b.text })] }));
-        else if (b.t === 'p') paras(b.text, { para: { spacing: { before: 80, after: 80, line: 360 } } }).forEach((p) => out.push(p));
+        else if (b.t === 'p') {
+          const para = { spacing: { before: 80, after: 80, line: 360 } };
+          if (b.indent) para.indent = { firstLine: D.bodyPt * 20 * 2 }; // 首行縮排兩個字
+          if (b.center) para.alignment = docx.AlignmentType.CENTER;
+          paras(b.text, { run: b.bold ? { bold: true } : undefined, para }).forEach((p) => out.push(p));
+        }
         else if (b.t === 'note') paras(b.text, { run: { color: '555555' }, para: { spacing: { before: 60, after: 60 } } }).forEach((p) => out.push(p));
         else if (b.t === 'list') {
           b.items.forEach((x) => out.push(new docx.Paragraph({
@@ -107,10 +112,10 @@
     }
 
     function build(model) {
-      const children = [
-        new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 0, after: 80 }, children: [run(model.title, { bold: true, size: pt(D.titlePt), color: D.accent })] }),
-        new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 0, after: 240 }, children: [run(model.subtitle, { bold: true, size: pt(D.subtitlePt) })] }),
-      ];
+      const children = [];
+      if (model.pretitle) children.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 0, after: 120 }, children: [run(model.pretitle, { bold: true, size: pt(D.h2Pt) })] }));
+      children.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 0, after: 80 }, children: [run(model.title, { bold: true, size: pt(D.titlePt), color: D.accent })] }));
+      children.push(new docx.Paragraph({ alignment: docx.AlignmentType.CENTER, spacing: { before: 0, after: 240 }, children: [run(model.subtitle || '', { bold: true, size: pt(D.subtitlePt) })] }));
       if (model.toc) {
         children.push(new docx.Paragraph({ spacing: { before: 120, after: 120 }, children: [run('目錄', { bold: true, size: pt(D.h1Pt), color: D.accent })] }));
         children.push(new docx.TableOfContents('目錄', { hyperlink: true, headingStyleRange: '1-2' }));

@@ -15,7 +15,17 @@
     mc: { label: '主持人稿' },
     manual: { label: '操作手冊' },
     supplies: { label: '備品清單' },
+    press: { label: '新聞稿' },
+    speech: { label: '致詞稿' },
+    posts: { label: '社群貼文' },
   };
+
+  // 新聞稿的類型
+  const PRESS_TYPES = {
+    pre: { label: '事前稿' },
+    post: { label: '事後稿' },
+  };
+  const PRESS_CLOSING = '【敬請媒體先進惠予刊登報導，感謝】';
 
   // --- 小工具 ---
   const lines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean);
@@ -266,14 +276,81 @@
     return { title: ev.name || '（請填寫活動名稱）', subtitle: '－備品清單－', fileLabel: '備品清單', toc: false, blocks: b };
   }
 
+  // 多段文字 → 多個段落區塊（空行略過）
+  function paraBlocks(text, opt) {
+    return lines(text).map((x) => Object.assign({ t: 'p', text: x }, opt || {}));
+  }
+
+  // --- 新聞稿 ---
+  function buildPress(ev, type) {
+    type = PRESS_TYPES[type] ? type : 'pre';
+    const p = (ev.press && ev.press[type]) || {};
+    const b = [];
+    const meta = kvRows([['發布日期', p.date], ['新聞聯絡', p.contact]]);
+    if (meta.length) b.push({ t: 'kv', rows: meta });
+    const body = paraBlocks(p.body, { indent: true });
+    if (body.length) body.forEach((x) => b.push(x));
+    else b.push({ t: 'note', text: '（請填寫新聞稿內文，或使用 AI 撰寫初稿）' });
+    b.push({ t: 'p', text: has(p.closing) ? p.closing : PRESS_CLOSING, center: true, bold: true });
+    if (lines(p.captions).length) {
+      b.push({ t: 'h1', text: '照片圖說' });
+      b.push({ t: 'list', ordered: true, items: lines(p.captions) });
+    }
+    return {
+      pretitle: `${has(p.issuer) ? p.issuer : ev.orgHost || ''}新聞稿`,
+      title: has(p.headline) ? p.headline : '（請填寫新聞標題）',
+      subtitle: p.subhead || '',
+      fileLabel: `${PRESS_TYPES[type].label.replace('稿', '')}新聞稿`,
+      toc: false, blocks: b,
+    };
+  }
+
+  // --- 致詞稿 ---
+  function buildSpeech(ev) {
+    const b = [];
+    const list = (ev.speeches || []).filter((s) => has(s.speaker) || has(s.body));
+    if (!list.length) b.push({ t: 'note', text: '（請新增致詞人）' });
+    list.forEach((s) => {
+      b.push({ t: 'h1', text: `${s.speaker || '○○○'} 致詞稿` });
+      if (has(s.minutes)) b.push({ t: 'note', text: `※ 建議致詞時間：約 ${s.minutes} 分鐘` });
+      const body = paraBlocks(s.body, { indent: true });
+      if (body.length) body.forEach((x) => b.push(x));
+      else b.push({ t: 'note', text: '（待填）' });
+    });
+    return { pretitle: ev.series || '', title: ev.name || '（請填寫活動名稱）', subtitle: '－致詞稿－', fileLabel: '致詞稿', toc: false, blocks: b };
+  }
+
+  // --- 社群貼文 ---
+  function buildPosts(ev) {
+    const b = [];
+    const list = (ev.posts || []).filter((s) => has(s.body) || has(s.stage));
+    b.push({ t: 'h1', text: '貼文規劃表' });
+    b.push({
+      t: 'table', head: ['No.', '平台', '階段', '曝光日期', '素材說明'], widths: [8, 16, 16, 18, 42],
+      rows: list.map((s, i) => [String(i + 1), s.platform, s.stage, s.date, s.visual]),
+    });
+    list.forEach((s, i) => {
+      b.push({ t: 'h2', text: `貼文 ${i + 1}｜${[s.platform, s.stage, s.date].filter(has).join('｜')}` });
+      const body = paraBlocks(s.body);
+      if (body.length) body.forEach((x) => b.push(x));
+      else b.push({ t: 'note', text: '（待填）' });
+      if (has(s.tags)) b.push({ t: 'p', text: s.tags });
+    });
+    return { title: ev.name || '（請填寫活動名稱）', subtitle: '－社群貼文－', fileLabel: '社群貼文', toc: false, blocks: b };
+  }
+
   function build(docId, ev, opts) {
     const company = (opts && opts.company) || '';
     let m;
     if (docId === 'mc') m = buildMC(ev);
     else if (docId === 'manual') m = buildManual(ev);
     else if (docId === 'supplies') m = buildSupplies(ev);
+    else if (docId === 'press') m = buildPress(ev, opts && opts.pressType);
+    else if (docId === 'speech') m = buildSpeech(ev);
+    else if (docId === 'posts') m = buildPosts(ev);
     else m = buildNotice(ev, opts && opts.audience);
-    m.footer = ev.orgExec || company;
+    // 新聞稿與致詞稿以主辦單位名義對外，頁尾不放執行單位名稱
+    m.footer = docId === 'press' || docId === 'speech' ? '' : ev.orgExec || company;
     return m;
   }
 
@@ -289,7 +366,7 @@
 
   // 文件模型轉純文字（複製貼到 E-mail／LINE 用）
   function toText(model) {
-    const out = [model.title, model.subtitle, ''];
+    const out = [model.pretitle, model.title, model.subtitle, ''].filter((x, i) => i === 3 || has(x));
     model.blocks.forEach((b) => {
       if (b.t === 'h1') out.push('', `【${b.text}】`);
       else if (b.t === 'h2') out.push('', `■ ${b.text}`);
@@ -304,7 +381,7 @@
     return out.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
-  const api = { AUDIENCES, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
+  const api = { AUDIENCES, PRESS_TYPES, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
   root.EDTemplates = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
