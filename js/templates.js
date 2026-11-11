@@ -321,20 +321,26 @@
   }
 
   // --- 社群貼文 ---
+  // 格式依公司慣用寫法：一篇一個主題（第 N 篇），短句分行，結尾放主題標籤與標記單位，並列出搭配圖卡
   function buildPosts(ev) {
     const b = [];
     const list = (ev.posts || []).filter((s) => has(s.body) || has(s.stage));
     b.push({ t: 'h1', text: '貼文規劃表' });
     b.push({
-      t: 'table', head: ['No.', '平台', '階段', '曝光日期', '素材說明'], widths: [8, 16, 16, 18, 42],
-      rows: list.map((s, i) => [String(i + 1), s.platform, s.stage, s.date, s.visual]),
+      t: 'table', head: ['篇次', '平台', '主題', '曝光日期', '圖卡／素材'], widths: [10, 17, 26, 15, 32],
+      rows: list.map((s, i) => [`第 ${i + 1} 篇`, s.platform, s.stage, s.date, s.visual]),
     });
     list.forEach((s, i) => {
-      b.push({ t: 'h2', text: `貼文 ${i + 1}｜${[s.platform, s.stage, s.date].filter(has).join('｜')}` });
-      const body = paraBlocks(s.body);
-      if (body.length) body.forEach((x) => b.push(x));
+      b.push({ t: 'h1', text: `第 ${i + 1} 篇｜${[s.stage, s.date].filter(has).join('｜')}` });
+      const body = String(s.body || '').split('\n').map((x) => x.trim());
+      if (body.some(has)) b.push({ t: 'p', text: body.join('\n').replace(/\n{3,}/g, '\n\n') });
       else b.push({ t: 'note', text: '（待填）' });
       if (has(s.tags)) b.push({ t: 'p', text: s.tags });
+      if (has(ev.postMentions)) b.push({ t: 'p', text: ev.postMentions });
+      if (lines(s.visual).length) {
+        b.push({ t: 'h2', text: '搭配圖卡' });
+        b.push({ t: 'list', ordered: true, items: lines(s.visual) });
+      }
     });
     return { title: ev.name || '（請填寫活動名稱）', subtitle: '－社群貼文－', fileLabel: '社群貼文', toc: false, blocks: b };
   }

@@ -17,7 +17,7 @@
     return {
       name: '', series: '', theme: '', dateText: '', timeText: '', venue: '', address: '', headcount: '',
       orgGuide: '', orgHost: '', orgCo: '', orgExec: CONFIG.company.name, description: '', setup: '', teardown: '',
-      checkinTime: '', checkinPlace: '', staffCall: '', transport: '',
+      checkinTime: '', checkinPlace: '', staffCall: '', transport: '', postMentions: '',
       contact: { name: '', phone: '', onsite: '', email: '' }, venueMap: null,
       teams: [], vips: [], schedule: [], notices, mc: { host: '', adlibs: '' },
       sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [],
@@ -139,12 +139,17 @@
         f('points', '重點（給 AI 參考，不會印出）', { type: 'textarea', full: true }),
         f('body', '致詞稿（一行一段）', { type: 'textarea', full: true, rows: 8 }),
       ] }] },
-    { id: 'posts', group: '文件', label: '社群貼文', doc: 'posts', hint: '一則貼文一列。寫好後可用「複製文字」貼到排程工具。', ai: 'posts', aiLabel: 'AI 規劃並撰寫貼文',
-      parts: () => [{ type: 'rows', path: 'posts', blank: { platform: 'Facebook', stage: '', date: '', body: '', tags: '', visual: '' }, grid: '1fr 1fr 1fr', cols: [
-        f('platform', '平台'), f('stage', '階段'), f('date', '曝光日期'),
-        f('body', '文案', { type: 'textarea', full: true, rows: 6 }),
-        f('tags', '主題標籤', { full: true }), f('visual', '素材說明', { full: true }),
-      ] }] },
+    { id: 'posts', group: '文件', label: '社群貼文', doc: 'posts', hint: '一篇貼文一列、一篇一個主題。文案照實際發文的分行方式填寫；寫好後可用「複製文字」貼到臉書或排程工具。', ai: 'posts', aiLabel: 'AI 規劃並撰寫系列貼文',
+      parts: () => [
+        { type: 'fields', fields: [f('postMentions', '固定標記單位（每篇結尾自動帶入）', { wide: true, ph: '@主辦單位 @協辦單位 #執行單位' })] },
+        { type: 'title', text: '各篇貼文' },
+        { type: 'rows', path: 'posts', blank: { platform: 'Facebook', stage: '', date: '', body: '', tags: '', visual: '' }, grid: '1fr 2fr 1fr', cols: [
+          f('platform', '平台'), f('stage', '主題'), f('date', '曝光日期'),
+          f('body', '文案', { type: 'textarea', full: true, rows: 10 }),
+          f('tags', '主題標籤', { full: true }),
+          f('visual', '搭配圖卡（一行一張）', { type: 'textarea', full: true }),
+        ] },
+      ] },
   ];
   const sectionById = (id) => SECTIONS.find((s) => s.id === id);
 
@@ -312,7 +317,7 @@
     },
     speech(r) { (r.speeches || []).forEach((s) => { if (ev.speeches[s.index]) ev.speeches[s.index].body = join(s.body); }); },
     posts(r) {
-      if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: s.visual || '' }));
+      if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: join(s.visual) }));
     },
   };
   async function runAI(task, arg) {
