@@ -18,7 +18,23 @@
     press: { label: '新聞稿' },
     speech: { label: '致詞稿' },
     posts: { label: '社群貼文' },
+    signin: { label: '簽到表' },
+    score: { label: '評分表' },
+    receipt: { label: '得獎領據' },
   };
+
+  // 簽到表的類型與預設欄位（「No.」會自動加在最前面）
+  const SIGN_TYPES = {
+    attendee: { label: '參加者', cols: '姓名\n服務單位\n上午簽到\n下午簽到\n備註' },
+    vip: { label: '貴賓／媒體', cols: '單位\n職稱\n姓名\n簽名' },
+    staff: { label: '工作人員', cols: '姓名\n組別\n聯絡電話\n簽到時間\n簽退時間' },
+  };
+  // 得獎領據的格式
+  const RECEIPT_TYPES = {
+    list: { label: '得獎簽收單' },
+    form: { label: '領獎確認書' },
+  };
+  const RECEIPT_DECLARE = '□ 本人已詳細閱讀並同意遵守活動辦法與注意事項，並同意提供個人資料供本活動領獎及相關稅務作業使用；所提供之資料如有不實，願自負相關責任。\n□ 本人了解獎項將依中華民國所得稅法相關規定辦理，如達扣繳或申報標準，同意配合辦理。';
 
   // 新聞稿的類型
   const PRESS_TYPES = {
@@ -352,6 +368,87 @@
     return { title: ev.name || '（請填寫活動名稱）', subtitle: '－社群貼文－', fileLabel: '社群貼文', toc: false, blocks: b };
   }
 
+  const cells = (s) => String(s || '').split(/[,，\t]/).map((x) => x.trim());
+
+  // --- 簽到表 ---
+  function buildSignin(ev, type) {
+    type = SIGN_TYPES[type] ? type : 'attendee';
+    const s = (ev.signin && ev.signin[type]) || {};
+    const cols = lines(has(s.cols) ? s.cols : SIGN_TYPES[type].cols);
+    let names = lines(s.names).map(cells);
+    // 貴賓簽到表沒填名單時，自動帶入貴賓名單
+    if (!names.length && type === 'vip') names = (ev.vips || []).filter((v) => has(v.org) || has(v.name)).map((v) => [v.org, v.title, v.name]);
+    const blank = has(s.blank) ? Math.max(0, parseInt(s.blank, 10) || 0) : names.length ? 5 : 20;
+    const rows = [];
+    names.forEach((n) => rows.push([String(rows.length + 1)].concat(cols.map((c, i) => n[i] || ''))));
+    for (let i = 0; i < blank; i++) rows.push([String(rows.length + 1)].concat(cols.map(() => '')));
+    const w = Math.floor(92 / cols.length);
+    const b = [
+      { t: 'kv', rows: kvRows([['活動日期', ev.dateText], ['活動地點', place(ev)]]) },
+      { t: 'table', head: ['No.'].concat(cols), widths: [100 - w * cols.length].concat(cols.map(() => w)), rows, rowH: 44 },
+    ];
+    if (has(s.note)) b.push({ t: 'note', text: s.note });
+    return { title: ev.name || '（請填寫活動名稱）', subtitle: `－${SIGN_TYPES[type].label}簽到表－`, fileLabel: `${SIGN_TYPES[type].label.replace('／', '')}簽到表`, toc: false, blocks: b };
+  }
+
+  // --- 評分表 ---
+  // 每一隊一張評審評分表（各自一頁），最後附計分統計表
+  function buildScore(ev) {
+    const sc = ev.score || {};
+    const crit = (sc.criteria || []).filter((c) => has(c.item));
+    const pct = (w) => (has(w) ? String(w).replace('%', '') + '%' : '');
+    const total = crit.reduce((a, c) => a + (parseFloat(c.weight) || 0), 0);
+    let teams = lines(sc.teams).map(cells);
+    if (!teams.length) teams = [['', '']];
+    const name = has(sc.title) ? sc.title : '競賽';
+    const b = [];
+    teams.forEach((t, i) => {
+      if (i > 0) { b.push({ t: 'break' }); b.push({ t: 'p', text: `${ev.name || ''}｜${name} 評審評分表`, center: true, bold: true }); }
+      b.push({ t: 'table', head: ['隊次', '隊名', '構想簡述'], widths: [14, 30, 56], rows: [[t[0] || '', t[1] || '', '']], rowH: 70 });
+      b.push({
+        t: 'table', head: ['評分項目', '評分內容', '比例', '各項得分', '評語'], widths: [22, 34, 10, 12, 22], rowH: 64,
+        rows: crit.map((c) => [c.item, c.desc, pct(c.weight), '', '']).concat([['總分（100 分）', '', total ? total + '%' : '', '', '']]),
+      });
+      b.push({ t: 'kv', rows: [['評審簽名', '']], rowH: 70 });
+    });
+    if (crit.length && total !== 100) b.push({ t: 'note', text: `※ 目前各項比例合計為 ${total}%，請調整為 100%。` });
+    const judges = Math.min(6, Math.max(1, parseInt(sc.judges, 10) || 3));
+    const jn = Array.from({ length: judges }, (_, i) => `評審 ${String.fromCharCode(65 + i)}`);
+    const jw = Math.floor(52 / judges);
+    b.push({ t: 'break' });
+    b.push({ t: 'h1', text: '計分統計表' });
+    b.push({
+      t: 'table', head: ['隊次', '隊名'].concat(jn, ['總分', '排名']), widths: [10, 100 - 10 - jw * judges - 20].concat(jn.map(() => jw), [10, 10]), rowH: 48,
+      rows: teams.map((t) => [t[0] || '', t[1] || ''].concat(jn.map(() => ''), ['', ''])),
+    });
+    b.push({ t: 'kv', rows: [['統計人員簽名', ''], ['複核人員簽名', '']], rowH: 56 });
+    return { title: ev.name || '（請填寫活動名稱）', subtitle: `－${name} 評審評分表－`, fileLabel: '評分表', toc: false, blocks: b };
+  }
+
+  // --- 得獎領據 ---
+  function buildReceipt(ev, type) {
+    type = RECEIPT_TYPES[type] ? type : 'list';
+    const prizes = (ev.prizes || []).filter((p) => has(p.name));
+    const b = [];
+    if (type === 'list') {
+      const rows = [];
+      prizes.forEach((p) => { const n = Math.max(1, parseInt(p.count, 10) || 1); for (let i = 0; i < n; i++) rows.push([String(rows.length + 1), p.name, p.content, '', '', '', '']); });
+      b.push({ t: 'table', head: ['No.', '獎項名稱', '獎品內容', '得獎隊伍', '得獎者姓名', '連絡電話', '簽收日期'], widths: [7, 19, 18, 13, 15, 15, 13], rows, rowH: 52 });
+      b.push({ t: 'note', text: '※ 請得獎者親自簽收；代領請註明代領人姓名。' });
+      return { title: ev.name || '（請填寫活動名稱）', subtitle: '－得獎簽收單－', fileLabel: '得獎簽收單', toc: false, blocks: b };
+    }
+    const r = ev.receipt || {};
+    b.push({
+      t: 'kv', rowH: 42,
+      rows: [['活動名稱', ev.name || ''], ['姓名', ''], ['手機號碼', ''], ['得獎獎項', prizes.length === 1 ? [prizes[0].name, prizes[0].content].filter(has).join('｜') : ''],
+        ['領獎方式', '□ 現場領取　　□ 郵寄'], ['戶籍地址', ''], ['通訊地址', '□ 同戶籍地址']],
+    });
+    b.push({ t: 'table', head: ['身分證正面影本', '身分證反面影本'], widths: [50, 50], rows: [['（請黏貼）', '（請黏貼）']], rowH: 170 });
+    paraBlocks(has(r.declare) ? r.declare : RECEIPT_DECLARE).forEach((x) => b.push(x));
+    b.push({ t: 'kv', rowH: 56, rows: [['得獎者簽名／蓋章', ''], ['日期', '　　　年　　　月　　　日']] });
+    return { pretitle: ev.orgExec || '', title: '得獎者領獎確認書', subtitle: '', fileLabel: '領獎確認書', toc: false, blocks: b };
+  }
+
   function build(docId, ev, opts) {
     const company = (opts && opts.company) || '';
     let m;
@@ -361,6 +458,9 @@
     else if (docId === 'press') m = buildPress(ev, opts && opts.pressType);
     else if (docId === 'speech') m = buildSpeech(ev);
     else if (docId === 'posts') m = buildPosts(ev);
+    else if (docId === 'signin') m = buildSignin(ev, opts && opts.signType);
+    else if (docId === 'score') m = buildScore(ev);
+    else if (docId === 'receipt') m = buildReceipt(ev, opts && opts.receiptType);
     else m = buildNotice(ev, opts && opts.audience);
     // 新聞稿與致詞稿以主辦單位名義對外，頁尾不放執行單位名稱
     m.footer = docId === 'press' || docId === 'speech' ? '' : ev.orgExec || company;
@@ -394,7 +494,7 @@
     return out.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
-  const api = { AUDIENCES, PRESS_TYPES, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
+  const api = { AUDIENCES, PRESS_TYPES, SIGN_TYPES, RECEIPT_TYPES, RECEIPT_DECLARE, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
   root.EDTemplates = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);

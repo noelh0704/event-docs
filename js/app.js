@@ -11,6 +11,11 @@
     Object.keys(T.PRESS_TYPES).forEach((k) => (o[k] = { issuer: '', date: '', contact: '', headline: '', subhead: '', highlights: '', body: '', closing: '', captions: '' }));
     return o;
   }
+  function blankSignin() {
+    const o = {};
+    Object.keys(T.SIGN_TYPES).forEach((k) => (o[k] = { cols: '', names: '', blank: '', note: '' }));
+    return o;
+  }
   function blankEvent() {
     const notices = {};
     Object.keys(T.AUDIENCES).forEach((k) => (notices[k] = { intro: '', notes: '', bring: '', closing: '' }));
@@ -22,6 +27,7 @@
       teams: [], vips: [], schedule: [], notices, mc: { host: '', adlibs: '' },
       sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [],
       press: blankPress(), speeches: [], posts: [],
+      signin: blankSignin(), score: { title: '', judges: '3', teams: '', criteria: [] }, prizes: [], receipt: { declare: '' },
       cards: [], brand: clone(window.EDCards.DEFAULT_BRAND), _ver: {},
     };
   }
@@ -35,6 +41,13 @@
     const bp = blankPress(), ep = (e && e.press) || {};
     Object.keys(bp).forEach((k) => (bp[k] = Object.assign(bp[k], ep[k] || {})));
     out.press = bp;
+    const bs = blankSignin(), es = (e && e.signin) || {};
+    Object.keys(bs).forEach((k) => (bs[k] = Object.assign(bs[k], es[k] || {})));
+    out.signin = bs;
+    out.score = Object.assign({ title: '', judges: '3', teams: '', criteria: [] }, (e && e.score) || {});
+    if (!Array.isArray(out.score.criteria)) out.score.criteria = [];
+    out.receipt = Object.assign({ declare: '' }, (e && e.receipt) || {});
+    if (!Array.isArray(out.prizes)) out.prizes = [];
     out.brand = Object.assign(clone(window.EDCards.DEFAULT_BRAND), (e && e.brand) || {});
     ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies', 'speeches', 'posts', 'cards'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     out.schedule.forEach((r) => { if (r.script == null) r.script = ''; if (r.ops == null) r.ops = ''; });
@@ -50,7 +63,15 @@
 
   let ev = normalize(readStore(CONFIG.storage.project) || clone(SAMPLE_EVENT));
   let settings = Object.assign({ aiMode: CONFIG.ai.defaultMode, proxyUrl: '', accessCode: '', apiKey: '', model: '' }, readStore(CONFIG.storage.settings) || {});
-  const ui = { section: 'basic', doc: 'notice', audience: 'attendee', pressType: 'pre', cardSize: 'portrait' };
+  const ui = { section: 'basic', doc: 'notice', audience: 'attendee', pressType: 'pre', cardSize: 'portrait', signType: 'attendee', receiptType: 'list' };
+  // 右上角「對象／類型」選單：每種文件對應的選項
+  const VARIANTS = {
+    notice: { key: 'audience', label: '對象', opts: () => T.AUDIENCES },
+    press: { key: 'pressType', label: '類型', opts: () => T.PRESS_TYPES },
+    signin: { key: 'signType', label: '類型', opts: () => T.SIGN_TYPES },
+    receipt: { key: 'receiptType', label: '格式', opts: () => T.RECEIPT_TYPES },
+    cards: { key: 'cardSize', label: '尺寸', opts: () => window.EDCards.SIZES },
+  };
 
   const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
   function setPath(obj, path, val) {
@@ -93,14 +114,14 @@
     { id: 'vips', group: '共用資料', label: '貴賓名單', hint: '依唱名順序排列。',
       parts: () => [{ type: 'rows', path: 'vips', blank: { org: '', title: '', name: '' }, grid: '2fr 1fr 1fr', cols: [f('org', '單位'), f('title', '職稱'), f('name', '姓名')] }] },
 
-    { id: 'notice', group: '文件', label: '行前通知', doc: 'notice', hint: '先在右上角選「對象」，每種對象各有一份內容。留空的段落會使用公版預設文字。', ai: 'notice', aiLabel: 'AI 撰寫此對象的通知',
+    { id: 'notice', group: '執行文件', label: '行前通知', doc: 'notice', hint: '先在右上角選「對象」，每種對象各有一份內容。留空的段落會使用公版預設文字。', ai: 'notice', aiLabel: 'AI 撰寫此對象的通知',
       parts: () => [{ type: 'fields', fields: [
         f(`notices.${ui.audience}.intro`, '開頭說明（留空用預設）', { type: 'textarea', wide: true }),
         f(`notices.${ui.audience}.notes`, '注意事項（一行一項）', { type: 'textarea', wide: true, rows: 7 }),
         f(`notices.${ui.audience}.bring`, '攜帶物品／服裝準備（一行一項）', { type: 'textarea', wide: true }),
         f(`notices.${ui.audience}.closing`, '結尾（留空用預設）', { type: 'textarea', wide: true }),
       ] }] },
-    { id: 'mc', group: '文件', label: '主持人稿', doc: 'mc', hint: '每個流程環節寫一段講稿；音樂與工作人員動作用括號標示。', ai: 'mc', aiLabel: 'AI 撰寫全場講稿',
+    { id: 'mc', group: '執行文件', label: '主持人稿', doc: 'mc', hint: '每個流程環節寫一段講稿；音樂與工作人員動作用括號標示。', ai: 'mc', aiLabel: 'AI 撰寫全場講稿',
       parts: () => [
         { type: 'fields', fields: [f('mc.host', '主持人')] },
         { type: 'title', text: '各環節講稿' },
@@ -108,7 +129,7 @@
         { type: 'title', text: '突發狀況應對' },
         { type: 'fields', fields: [f('mc.adlibs', '應對句（一行一項）', { type: 'textarea', wide: true, rows: 5 })] },
       ] },
-    { id: 'manual', group: '文件', label: '操作手冊', doc: 'manual', hint: '作業一行一項，匯出時會自動加上勾選框。', ai: 'manual', aiLabel: 'AI 撰寫作業、SOP 與應變',
+    { id: 'manual', group: '執行文件', label: '操作手冊', doc: 'manual', hint: '作業一行一項，匯出時會自動加上勾選框。', ai: 'manual', aiLabel: 'AI 撰寫作業、SOP 與應變',
       parts: () => [
         { type: 'title', text: '各時段作業' },
         { type: 'rows', path: 'schedule', blank: SCHEDULE_BLANK, grid: '1fr 1fr 2.2fr', cols: [f('start', '開始'), f('end', '結束'), f('item', '活動'), f('ops', '作業（一行一項）', { type: 'textarea', full: true, rows: 4 })] },
@@ -117,7 +138,7 @@
         { type: 'title', text: '緊急應變' },
         { type: 'rows', path: 'emergencies', blank: { situation: '', handling: '' }, grid: '1fr 2.5fr', cols: [f('situation', '狀況'), f('handling', '處理原則')] },
       ] },
-    { id: 'supplies', group: '文件', label: '備品清單', doc: 'supplies', hint: '同一區域的項目排在一起，匯出時區域名稱只顯示一次。', ai: 'supplies', aiLabel: 'AI 建議備品清單',
+    { id: 'supplies', group: '執行文件', label: '備品清單', doc: 'supplies', hint: '同一區域的項目排在一起，匯出時區域名稱只顯示一次。', ai: 'supplies', aiLabel: 'AI 建議備品清單',
       parts: () => [
         { type: 'fields', fields: [f('supplyReminders', '清點提醒（一行一項）', { type: 'textarea', wide: true, rows: 5 })] },
         { type: 'title', text: '備品明細' },
@@ -125,7 +146,7 @@
           f('area', '區域'), f('item', '項目'), f('qty', '數量'), f('unit', '規格'), f('note', '備註', { full: true }),
         ] },
       ] },
-    { id: 'press', group: '文件', label: '新聞稿', doc: 'press', hint: '先在右上角選「事前稿」或「事後稿」。內文一行一段；發稿單位留空會帶入主辦單位。', ai: 'press', aiLabel: 'AI 撰寫新聞稿',
+    { id: 'press', group: '宣傳', label: '新聞稿', doc: 'press', hint: '先在右上角選「事前稿」或「事後稿」。內文一行一段；發稿單位留空會帶入主辦單位。', ai: 'press', aiLabel: 'AI 撰寫新聞稿',
       parts: () => { const k = `press.${ui.pressType}`; return [{ type: 'fields', fields: [
         f(`${k}.issuer`, '發稿單位（留空用主辦單位）'), f(`${k}.date`, '發布日期'),
         f(`${k}.contact`, '新聞聯絡', { wide: true }),
@@ -135,13 +156,13 @@
         f(`${k}.captions`, '照片圖說（一行一項）', { type: 'textarea', wide: true }),
         f(`${k}.closing`, '結尾（留空用預設）', { wide: true }),
       ] }]; } },
-    { id: 'speech', group: '文件', label: '致詞稿', doc: 'speech', hint: '一位致詞人一列；重點一行一項，AI 會依重點與分鐘數撰寫。', ai: 'speech', aiLabel: 'AI 撰寫致詞稿',
+    { id: 'speech', group: '宣傳', label: '致詞稿', doc: 'speech', hint: '一位致詞人一列；重點一行一項，AI 會依重點與分鐘數撰寫。', ai: 'speech', aiLabel: 'AI 撰寫致詞稿',
       parts: () => [{ type: 'rows', path: 'speeches', blank: { speaker: '', minutes: '3', points: '', body: '' }, grid: '3fr 1fr', cols: [
         f('speaker', '致詞人（單位＋姓名＋職稱）'), f('minutes', '分鐘'),
         f('points', '重點（給 AI 參考，不會印出）', { type: 'textarea', full: true }),
         f('body', '致詞稿（一行一段）', { type: 'textarea', full: true, rows: 8 }),
       ] }] },
-    { id: 'posts', group: '文件', label: '社群貼文', doc: 'posts', hint: '一篇貼文一列、一篇一個主題。文案照實際發文的分行方式填寫；寫好後可用「複製文字」貼到臉書或排程工具。', ai: 'posts', aiLabel: 'AI 規劃並撰寫系列貼文',
+    { id: 'posts', group: '宣傳', label: '社群貼文', doc: 'posts', hint: '一篇貼文一列、一篇一個主題。文案照實際發文的分行方式填寫；寫好後可用「複製文字」貼到臉書或排程工具。', ai: 'posts', aiLabel: 'AI 規劃並撰寫系列貼文',
       parts: () => [
         { type: 'fields', fields: [
           f('postMentions', '固定標記單位（每篇結尾自動帶入）', { wide: true, ph: '@指導單位 @主辦單位 @協辦單位' }),
@@ -155,7 +176,26 @@
           f('visual', '搭配圖卡（一行一張）', { type: 'textarea', full: true }),
         ] },
       ] },
-    { id: 'cards', group: '文件', label: '貼文圖卡', doc: 'cards', hint: '文字由版型排版，不是 AI 產圖，字一定正確。先按「依貼文帶入」建立圖卡，再調整文字。各版型用法：首圖＝標題＋副標＋日期地點；資訊卡＝每行「項目｜內容」；重點條列卡＝每行一個重點；抽獎卡＝每行一個步驟、副標填獎項；倒數卡＝角標填天數。', ai: 'cards', aiLabel: 'AI 撰寫圖卡文字',
+    { id: 'signin', group: '現場表單', label: '簽到表', doc: 'signin', hint: '先在右上角選類型。名單一行一人，用逗號分開對應各欄（例如「王小明,示範公司」）；貴賓簽到表沒填名單時會自動帶入貴賓名單。',
+      parts: () => { const k = `signin.${ui.signType}`; return [{ type: 'fields', fields: [
+        f(`${k}.cols`, '欄位（一行一欄，留空用預設；No. 會自動加上）', { type: 'textarea', wide: true, rows: 5, ph: T.SIGN_TYPES[ui.signType].cols }),
+        f(`${k}.names`, '名單（一行一人，逗號分欄）', { type: 'textarea', wide: true, rows: 8 }),
+        f(`${k}.blank`, '另加空白列數'), f(`${k}.note`, '表格下方備註'),
+      ] }]; } },
+    { id: 'score', group: '現場表單', label: '評分表', doc: 'score', hint: '每一隊會產生一張評審評分表（各自一頁），最後附計分統計表。比例只填數字，合計需為 100。', ai: 'score', aiLabel: 'AI 建議評分項目',
+      parts: () => [
+        { type: 'fields', fields: [f('score.title', '競賽名稱'), f('score.judges', '評審人數'), f('score.teams', '參賽隊伍（一行一隊：隊次,隊名）', { type: 'textarea', wide: true, rows: 5 })] },
+        { type: 'title', text: '評分項目' },
+        { type: 'rows', path: 'score.criteria', blank: { item: '', desc: '', weight: '' }, grid: '2fr 3fr .8fr', cols: [f('item', '評分項目'), f('desc', '評分內容'), f('weight', '比例 %')] },
+      ] },
+    { id: 'receipt', group: '現場表單', label: '得獎領據', doc: 'receipt', hint: '右上角可切換「得獎簽收單」（多人一張，依名額展開列數）與「領獎確認書」（一人一張，含身分證影本黏貼欄）。',
+      parts: () => [
+        { type: 'title', text: '獎項' },
+        { type: 'rows', path: 'prizes', blank: { name: '', content: '', count: '1' }, grid: '2fr 2fr .8fr', cols: [f('name', '獎項名稱'), f('content', '獎品內容'), f('count', '名額')] },
+        { type: 'title', text: '領獎確認書' },
+        { type: 'fields', fields: [f('receipt.declare', '聲明事項（一行一項，留空用預設）', { type: 'textarea', wide: true, rows: 5, ph: T.RECEIPT_DECLARE })] },
+      ] },
+    { id: 'cards', group: '宣傳', label: '貼文圖卡', doc: 'cards', hint: '文字由版型排版，不是 AI 產圖，字一定正確。先按「依貼文帶入」建立圖卡，再調整文字。各版型用法：首圖＝標題＋副標＋日期地點；資訊卡＝每行「項目｜內容」；重點條列卡＝每行一個重點；抽獎卡＝每行一個步驟、副標填獎項；倒數卡＝角標填天數。', ai: 'cards', aiLabel: 'AI 撰寫圖卡文字',
       extra: '<button class="btn" data-act="cardsFromPosts">依貼文帶入</button>',
       parts: () => [
         { type: 'title', text: '品牌設定' },
@@ -174,12 +214,10 @@
 
   // ---------- 畫面：左側選單 ----------
   function renderNav() {
-    let html = '', group = '';
-    SECTIONS.forEach((s) => {
-      if (s.group !== group) { group = s.group; html += `<div class="nav-group">${group}</div>`; }
-      html += `<button data-section="${s.id}" aria-current="${s.id === ui.section}">${s.label}</button>`;
-    });
-    $('#nav').innerHTML = html;
+    const groups = [];
+    SECTIONS.forEach((s) => { if (!groups.includes(s.group)) groups.push(s.group); });
+    $('#nav').innerHTML = groups.map((g) => `<div class="nav-group">${g}</div>` + SECTIONS.filter((s) => s.group === g)
+      .map((s) => `<button data-section="${s.id}" aria-current="${s.id === ui.section}">${s.label}</button>`).join('')).join('');
   }
 
   // ---------- 畫面：填寫區 ----------
@@ -218,7 +256,7 @@
   }
   function renderForm() {
     const s = sectionById(ui.section);
-    $('#sectionTitle').textContent = s.label + (s.id === 'notice' ? `｜${T.AUDIENCES[ui.audience].label}` : s.id === 'press' ? `｜${T.PRESS_TYPES[ui.pressType].label}` : '');
+    $('#sectionTitle').textContent = s.label + (VARIANTS[s.id] && s.id !== 'cards' ? `｜${VARIANTS[s.id].opts()[ui[VARIANTS[s.id].key]].label}` : '');
     $('#sectionHint').textContent = s.hint || '';
     $('#sectionActions').innerHTML = (s.extra || '') + (s.ai ? `<button class="btn ai" data-act="ai" data-task="${s.ai}">${s.aiLabel}</button>` : '');
     $('#form').innerHTML = s.parts().map(partHTML).join('');
@@ -226,7 +264,7 @@
 
   // ---------- 畫面：預覽 ----------
   function currentModel() {
-    return T.build(ui.doc === 'cards' ? 'posts' : ui.doc, ev, { audience: ui.audience, pressType: ui.pressType, company: CONFIG.company.name });
+    return T.build(ui.doc === 'cards' ? 'posts' : ui.doc, ev, { audience: ui.audience, pressType: ui.pressType, signType: ui.signType, receiptType: ui.receiptType, company: CONFIG.company.name });
   }
   function renderPreview() {
     const tabs = Object.keys(T.DOCS).map((k) => [k, T.DOCS[k].label]).concat([['cards', '貼文圖卡']]);
@@ -235,15 +273,13 @@
     document.querySelectorAll('[data-for="doc"]').forEach((el) => (el.style.display = isCards ? 'none' : ''));
     $('#zipBtn').style.display = isCards ? '' : 'none';
     $('#page').hidden = isCards; $('#cardsView').hidden = !isCards;
-    // 「對象／類型」選單：行前通知選對象、新聞稿選事前或事後
-    const opts = ui.doc === 'notice' ? T.AUDIENCES : ui.doc === 'press' ? T.PRESS_TYPES : isCards ? window.EDCards.SIZES : null;
-    $('#audWrap').style.display = opts ? '' : 'none';
-    if (opts) {
-      const cur = ui.doc === 'notice' ? ui.audience : isCards ? ui.cardSize : ui.pressType;
-      $('#audLabel').textContent = ui.doc === 'notice' ? '對象' : isCards ? '尺寸' : '類型';
+    const V = VARIANTS[ui.doc];
+    $('#audWrap').style.display = V ? '' : 'none';
+    if (V) {
+      const opts = V.opts(), cur = ui[V.key];
+      $('#audLabel').textContent = V.label;
       $('#audience').innerHTML = Object.keys(opts).map((k) => `<option value="${k}"${k === cur ? ' selected' : ''}>${opts[k].label}</option>`).join('');
     }
-    $('#csvBtn').style.display = ui.doc === 'supplies' ? '' : 'none';
     if (isCards) renderCards();
     else $('#page').innerHTML = window.EDRenderHTML.render(currentModel());
   }
@@ -375,6 +411,9 @@
     posts(r) {
       if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: join(s.visual) }));
     },
+    score(r) {
+      if (Array.isArray(r.criteria) && r.criteria.length) ev.score.criteria = r.criteria.map((c) => ({ item: c.item || '', desc: c.desc || '', weight: String(c.weight == null ? '' : c.weight).replace('%', '') }));
+    },
     cards(r) {
       const types = window.EDCards.TYPES;
       if (Array.isArray(r.cards) && r.cards.length) ev.cards = r.cards.map((c) => ({ post: String(c.post || '1'), type: types[c.type] ? c.type : 'points', title: c.title || '', sub: c.sub || '', badge: String(c.badge == null ? '' : c.badge), lines: join(c.lines) }));
@@ -446,7 +485,7 @@
     if (path && e.target.closest('#form')) { setPath(ev, path, e.target.value); touch(); }
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'audience') { if (ui.doc === 'press') ui.pressType = e.target.value; else if (ui.doc === 'cards') ui.cardSize = e.target.value; else ui.audience = e.target.value; renderForm(); renderPreview(); }
+    if (e.target.id === 'audience') { if (VARIANTS[ui.doc]) ui[VARIANTS[ui.doc].key] = e.target.value; renderForm(); renderPreview(); }
     if (e.target.classList.contains('img-file') && e.target.files[0]) loadImage(e.target.files[0], e.target.dataset.imgpath, Number(e.target.dataset.max), !!e.target.dataset.png);
     if (e.target.id === 'projectFile' && e.target.files[0]) {
       const reader = new FileReader();

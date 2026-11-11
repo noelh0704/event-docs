@@ -129,6 +129,12 @@ ${text}`,
 各篇貼文：${JSON.stringify((ev.posts || []).map((p, i) => ({ 篇次: i + 1, 主題: p.stage, 曝光日期: p.date, 文案: String(p.body || '').slice(0, 600), 搭配圖卡: p.visual })))}
 活動資料：${eventBrief(ev)}`;
 
+  TASKS.score = (ev) => `請為下列活動的競賽設計評審評分項目。
+輸出 JSON：{"criteria":[{"item":"評分項目，10 字內","desc":"評分內容：列出 2 至 3 個具體評分面向，以頓號分隔","weight":比例數字}]}
+要求：共 5 項，比例合計必須等於 100，最重要的項目放最前面；項目要能讓評審在現場直接打分，避免抽象用語。
+競賽名稱：${(ev.score && ev.score.title) || '（未提供，請依活動性質判斷）'}
+活動資料：${eventBrief(ev)}`;
+
   function parseJSON(text) {
     let s = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
     const a = s.indexOf('{'), b = s.lastIndexOf('}');

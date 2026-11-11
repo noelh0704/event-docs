@@ -95,6 +95,7 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
 .paper ul { list-style: none; }
 .paper ul li::before { content: "▶"; font-size: .7em; margin-left: -18px; margin-right: 8px; vertical-align: 2px; }
 .d-note { color: #555; }
+.d-break { border-top: 2px dashed var(--line); margin: 30px -60px; page-break-after: always; }
 .d-pretitle { text-align: center; font-weight: 700; font-size: 16px; margin: 0 0 6px; }
 .d-indent { text-indent: 2em; }
 .d-center { text-align: center; }

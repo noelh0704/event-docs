@@ -92,6 +92,28 @@ const SAMPLE_EVENT = {
     { platform: 'Facebook', stage: '活動上線', date: '3/5', body: '【春日好食光．在地好物集合】✨ 2027 港都春日市集 來了！\n\n這個春天，你想帶什麼回家？\n是剛出爐的麵包\n還是一束路邊看不到的花\n\n🌿 在地小農、職人品牌一次集合\n🎤 舞台演出整個下午不間斷\n👨‍👩‍👧 親子體驗免費玩\n\n-\n📅 3/20（六）14:00－20:00\n📍 示範市民廣場\n👉 活動資訊：（連結）', tags: '#活動上線 #週末去哪裡', visual: '首圖（主視覺＋日期地點）\n市集亮點\n舞台節目表' },
     { platform: 'Facebook', stage: '倒數加催與抽獎', date: '3/15', body: '📣 你身邊，有沒有一個很愛逛市集的人？\n\n可能是那個「看到手作就走不動」的人\n也可能是那個「每次都說只逛不買」的人\n\n#看到這裡你想起了誰\n\n-\n🎁 揪他一起來，還有機會帶好禮回家\n① 按讚這篇貼文\n② @一位你想一起逛市集的朋友\n③ 留言告訴我們「你最想在市集遇見什麼」\n\n🎁 抽出 5 位送在地好物組\n至 3/18 截止，記得回來看留言區有沒有上榜', tags: '#抽獎活動 #倒數5天', visual: '首圖（倒數 5 天）\n抽好禮' },
   ],
+  signin: {
+    attendee: { cols: '', names: '', blank: '20', note: '' },
+    vip: { cols: '', names: '', blank: '5', note: '' },
+    staff: { cols: '', names: '王小明,總控\n陳小華,接待／報到組\n林小美,市集／機動組\n張小強,攝影組', blank: '6', note: '※ 請於集合時間前完成簽到，離場前完成簽退。' },
+  },
+  score: {
+    title: '攤位佈置競賽', judges: '3', teams: '1,好日子麵包\n2,山腳下花店\n3,阿嬤的醬菜',
+    criteria: [
+      { item: '主題切合度', desc: '攤位呈現與「春日」主題的連結', weight: '30' },
+      { item: '創意與巧思', desc: '陳列手法、道具運用的新意', weight: '25' },
+      { item: '視覺完整度', desc: '色彩、招牌、動線的整體感', weight: '20' },
+      { item: '互動體驗', desc: '與民眾互動的設計與氛圍', weight: '15' },
+      { item: '整體印象', desc: '評審綜合評價', weight: '10' },
+    ],
+  },
+  prizes: [
+    { name: '攤位佈置競賽 第一名', content: '禮券 3,000 元', count: '1' },
+    { name: '攤位佈置競賽 第二名', content: '禮券 2,000 元', count: '1' },
+    { name: '攤位佈置競賽 第三名', content: '禮券 1,000 元', count: '1' },
+    { name: '留言抽獎', content: '在地好物組', count: '5' },
+  ],
+  receipt: { declare: '' },
   brand: { primary: '#1d2b3a', secondary: '#d9772b', logo: null, bg: null },
   cards: [
     { post: '1', type: 'cover', title: '2027 港都春日市集', sub: '春日好食光・在地好物集合', badge: '免費入場', lines: '3/20（六）14:00－20:00\n示範市民廣場' },

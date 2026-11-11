@@ -50,6 +50,11 @@ with sync_playwright() as p:
     pg.click('[data-section="press"]'); pg.screenshot(path='test/out/ui-press.png')
     with pg.expect_download() as d: pg.click('[data-act="word"]')
     print('download3:', d.value.suggested_filename)
+    # 現場表單
+    for s in ['signin','score','receipt']:
+        pg.click(f'[data-section="{s}"]'); pg.wait_for_timeout(100)
+    pg.select_option('#audience','form'); pg.wait_for_timeout(100); assert '領獎確認書' in pg.inner_text('#page')
+    pg.click('[data-section="signin"]'); pg.select_option('#audience','vip'); pg.wait_for_timeout(100); assert '示範市政府' in pg.inner_text('#page table.d-table')
     # 貼文圖卡
     pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
     pg.click('[data-section="cards"]'); pg.wait_for_timeout(600); pg.screenshot(path='test/out/ui-cards.png')

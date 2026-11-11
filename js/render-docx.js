@@ -38,23 +38,25 @@
       return w;
     }
 
-    function table(head, rows, percents) {
+    // rowH：列高（像素），用於需要手寫或黏貼的表格
+    const rowHeight = (px) => (px ? { height: { value: Math.round(px * 15), rule: docx.HeightRule.ATLEAST } } : {});
+    function table(head, rows, percents, rowH) {
       const w = widthsOf(percents);
       const trs = [];
       if (head) {
         trs.push(new docx.TableRow({ tableHeader: true, children: head.map((h, i) => cell(h, w[i], { fill: D.headFill, bold: true, center: true })) }));
       }
       (rows.length ? rows : [head.map(() => '')]).forEach((r) => {
-        trs.push(new docx.TableRow({ cantSplit: true, children: r.map((c, i) => cell(c, w[i])) }));
+        trs.push(new docx.TableRow(Object.assign({ cantSplit: true, children: r.map((c, i) => cell(c, w[i])) }, rowHeight(rowH))));
       });
       return new docx.Table({ width: { size: CONTENT_W, type: docx.WidthType.DXA }, columnWidths: w, rows: trs });
     }
 
-    function kv(rows) {
+    function kv(rows, rowH) {
       const w = widthsOf([22, 78]);
       return new docx.Table({
         width: { size: CONTENT_W, type: docx.WidthType.DXA }, columnWidths: w,
-        rows: rows.map((r) => new docx.TableRow({ children: [cell(r[0], w[0], { fill: D.headFill, bold: true }), cell(r[1], w[1])] })),
+        rows: rows.map((r) => new docx.TableRow(Object.assign({ children: [cell(r[0], w[0], { fill: D.headFill, bold: true }), cell(r[1], w[1])] }, rowHeight(rowH)))),
       });
     }
 
@@ -104,8 +106,9 @@
             numbering: { reference: b.ordered ? 'ed-num' : 'ed-bullet', level: 0 },
             children: [run(x)], spacing: { before: 40, after: 40, line: 340 },
           })));
-        } else if (b.t === 'kv') { out.push(kv(b.rows)); out.push(gap()); }
-        else if (b.t === 'table') { out.push(table(b.head, b.rows, b.widths)); out.push(gap()); }
+        } else if (b.t === 'break') out.push(new docx.Paragraph({ children: [new docx.PageBreak()] }));
+        else if (b.t === 'kv') { out.push(kv(b.rows, b.rowH)); out.push(gap()); }
+        else if (b.t === 'table') { out.push(table(b.head, b.rows, b.widths, b.rowH)); out.push(gap()); }
         else if (b.t === 'image') { out.push(image(b)); out.push(gap()); }
       });
       return out;

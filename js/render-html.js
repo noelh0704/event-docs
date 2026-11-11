@@ -14,13 +14,14 @@
         const tag = b.ordered ? 'ol' : 'ul';
         return `<${tag}>${b.items.map((x) => `<li>${esc(x)}</li>`).join('')}</${tag}>`;
       }
+      case 'break': return '<div class="d-break"></div>';
       case 'kv':
-        return `<table class="d-kv"><tbody>${b.rows.map((r) => `<tr><th>${esc(r[0])}</th><td>${br(r[1])}</td></tr>`).join('')}</tbody></table>`;
+        return `<table class="d-kv"><tbody>${b.rows.map((r) => `<tr${b.rowH ? ` style="height:${b.rowH}px"` : ''}><th>${esc(r[0])}</th><td>${br(r[1])}</td></tr>`).join('')}</tbody></table>`;
       case 'table': {
         const cols = b.widths.map((w) => `<col style="width:${w}%">`).join('');
         const head = b.head.map((h) => `<th>${esc(h)}</th>`).join('');
         const rows = b.rows.length
-          ? b.rows.map((r) => `<tr>${r.map((c) => `<td>${br(c)}</td>`).join('')}</tr>`).join('')
+          ? b.rows.map((r) => `<tr${b.rowH ? ` style="height:${b.rowH}px"` : ''}>${r.map((c) => `<td>${br(c)}</td>`).join('')}</tr>`).join('')
           : `<tr><td colspan="${b.head.length}" class="d-empty">（尚無資料）</td></tr>`;
         return `<table class="d-table"><colgroup>${cols}</colgroup><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
       }
