@@ -21,7 +21,8 @@
       contact: { name: '', phone: '', onsite: '', email: '' }, venueMap: null,
       teams: [], vips: [], schedule: [], notices, mc: { host: '', adlibs: '' },
       sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [],
-      press: blankPress(), speeches: [], posts: [], _ver: {},
+      press: blankPress(), speeches: [], posts: [],
+      cards: [], brand: clone(window.EDCards.DEFAULT_BRAND), _ver: {},
     };
   }
   // 補齊缺少的欄位（舊版專案檔或 AI 匯入後使用）
@@ -34,7 +35,8 @@
     const bp = blankPress(), ep = (e && e.press) || {};
     Object.keys(bp).forEach((k) => (bp[k] = Object.assign(bp[k], ep[k] || {})));
     out.press = bp;
-    ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies', 'speeches', 'posts'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
+    out.brand = Object.assign(clone(window.EDCards.DEFAULT_BRAND), (e && e.brand) || {});
+    ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies', 'speeches', 'posts', 'cards'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     out.schedule.forEach((r) => { if (r.script == null) r.script = ''; if (r.ops == null) r.ops = ''; });
     if (!out._ver || typeof out._ver !== 'object') out._ver = {};
     return out;
@@ -48,7 +50,7 @@
 
   let ev = normalize(readStore(CONFIG.storage.project) || clone(SAMPLE_EVENT));
   let settings = Object.assign({ aiMode: CONFIG.ai.defaultMode, proxyUrl: '', accessCode: '', apiKey: '', model: '' }, readStore(CONFIG.storage.settings) || {});
-  const ui = { section: 'basic', doc: 'notice', audience: 'attendee', pressType: 'pre' };
+  const ui = { section: 'basic', doc: 'notice', audience: 'attendee', pressType: 'pre', cardSize: 'portrait' };
 
   const getPath = (obj, path) => path.split('.').reduce((o, k) => (o == null ? o : o[k]), obj);
   function setPath(obj, path, val) {
@@ -153,6 +155,20 @@
           f('visual', '搭配圖卡（一行一張）', { type: 'textarea', full: true }),
         ] },
       ] },
+    { id: 'cards', group: '文件', label: '貼文圖卡', doc: 'cards', hint: '文字由版型排版，不是 AI 產圖，字一定正確。先按「依貼文帶入」建立圖卡，再調整文字。各版型用法：首圖＝標題＋副標＋日期地點；資訊卡＝每行「項目｜內容」；重點條列卡＝每行一個重點；抽獎卡＝每行一個步驟、副標填獎項；倒數卡＝角標填天數。', ai: 'cards', aiLabel: 'AI 撰寫圖卡文字',
+      extra: '<button class="btn" data-act="cardsFromPosts">依貼文帶入</button>',
+      parts: () => [
+        { type: 'title', text: '品牌設定' },
+        { type: 'fields', fields: [f('brand.primary', '主色', { type: 'color' }), f('brand.secondary', '強調色', { type: 'color' })] },
+        { type: 'image', path: 'brand.logo', label: 'Logo（建議去背 PNG，放在左上角）', max: 600, png: true },
+        { type: 'image', path: 'brand.bg', label: '底圖（主視覺或活動照片，用於首圖、抽獎卡、倒數卡）', max: 1400 },
+        { type: 'title', text: '各張圖卡' },
+        { type: 'rows', path: 'cards', blank: { post: '1', type: 'points', title: '', sub: '', badge: '', lines: '' }, grid: '.7fr 1.3fr 2.4fr', cols: [
+          f('post', '第幾篇'), f('type', '版型', { type: 'select', options: Object.keys(window.EDCards.TYPES).map((k) => [k, window.EDCards.TYPES[k].label]) }), f('title', '標題'),
+          f('sub', '副標／獎項', { full: true }), f('badge', '角標／倒數天數', { full: true }),
+          f('lines', '條列內容（一行一項）', { type: 'textarea', full: true, rows: 4 }),
+        ] },
+      ] },
   ];
   const sectionById = (id) => SECTIONS.find((s) => s.id === id);
 
@@ -171,6 +187,8 @@
     const v = getPath(ev, path);
     const val = esc(v == null ? '' : v);
     const ph = fd.ph ? ` placeholder="${esc(fd.ph)}"` : '';
+    if (fd.type === 'select') return `<select data-path="${path}">${fd.options.map((o) => `<option value="${o[0]}"${o[0] === v ? ' selected' : ''}>${esc(o[1])}</option>`).join('')}</select>`;
+    if (fd.type === 'color') return `<input type="color" data-path="${path}" value="${val || '#000000'}">`;
     if (fd.type === 'textarea') return `<textarea data-path="${path}" rows="${fd.rows || 3}"${ph}>${val}</textarea>`;
     return `<input type="text" data-path="${path}" value="${val}"${ph}>`;
   }
@@ -181,9 +199,9 @@
     }
     if (p.type === 'image') {
       const img = getPath(ev, p.path);
-      return `<div class="img-box">${img && img.src ? `<img src="${img.src}" alt="場地配置圖"><button class="btn small" data-act="imgRemove">移除圖片</button>` : ''}
-        <label class="btn">選擇圖片<input type="file" id="imgFile" accept="image/png,image/jpeg" hidden></label>
-        <span class="hint" style="margin:0">匯出 Word 時會放在表格格子內。</span></div>`;
+      return `<div class="img-box">${img && img.src ? `<img src="${img.src}" alt=""><button class="btn small" data-act="imgRemove" data-path="${p.path}">移除圖片</button>` : ''}
+        <label class="btn">選擇圖片<input type="file" class="img-file" data-imgpath="${p.path}" data-max="${p.max || 1600}" data-png="${p.png ? 1 : ''}" accept="image/png,image/jpeg" hidden></label>
+        <span class="hint" style="margin:0">${esc(p.label || '匯出 Word 時會放在表格格子內。')}</span></div>`;
     }
     if (p.type === 'rows') {
       const rows = getPath(ev, p.path) || [];
@@ -202,26 +220,61 @@
     const s = sectionById(ui.section);
     $('#sectionTitle').textContent = s.label + (s.id === 'notice' ? `｜${T.AUDIENCES[ui.audience].label}` : s.id === 'press' ? `｜${T.PRESS_TYPES[ui.pressType].label}` : '');
     $('#sectionHint').textContent = s.hint || '';
-    $('#sectionActions').innerHTML = s.ai ? `<button class="btn ai" data-act="ai" data-task="${s.ai}">${s.aiLabel}</button>` : '';
+    $('#sectionActions').innerHTML = (s.extra || '') + (s.ai ? `<button class="btn ai" data-act="ai" data-task="${s.ai}">${s.aiLabel}</button>` : '');
     $('#form').innerHTML = s.parts().map(partHTML).join('');
   }
 
   // ---------- 畫面：預覽 ----------
   function currentModel() {
-    return T.build(ui.doc, ev, { audience: ui.audience, pressType: ui.pressType, company: CONFIG.company.name });
+    return T.build(ui.doc === 'cards' ? 'posts' : ui.doc, ev, { audience: ui.audience, pressType: ui.pressType, company: CONFIG.company.name });
   }
   function renderPreview() {
-    $('#docTabs').innerHTML = Object.keys(T.DOCS).map((k) => `<button role="tab" data-doc="${k}" aria-selected="${k === ui.doc}">${T.DOCS[k].label}</button>`).join('');
+    const tabs = Object.keys(T.DOCS).map((k) => [k, T.DOCS[k].label]).concat([['cards', '貼文圖卡']]);
+    $('#docTabs').innerHTML = tabs.map((t) => `<button role="tab" data-doc="${t[0]}" aria-selected="${t[0] === ui.doc}">${t[1]}</button>`).join('');
+    const isCards = ui.doc === 'cards';
+    document.querySelectorAll('[data-for="doc"]').forEach((el) => (el.style.display = isCards ? 'none' : ''));
+    $('#zipBtn').style.display = isCards ? '' : 'none';
+    $('#page').hidden = isCards; $('#cardsView').hidden = !isCards;
     // 「對象／類型」選單：行前通知選對象、新聞稿選事前或事後
-    const opts = ui.doc === 'notice' ? T.AUDIENCES : ui.doc === 'press' ? T.PRESS_TYPES : null;
+    const opts = ui.doc === 'notice' ? T.AUDIENCES : ui.doc === 'press' ? T.PRESS_TYPES : isCards ? window.EDCards.SIZES : null;
     $('#audWrap').style.display = opts ? '' : 'none';
     if (opts) {
-      const cur = ui.doc === 'notice' ? ui.audience : ui.pressType;
-      $('#audLabel').textContent = ui.doc === 'notice' ? '對象' : '類型';
+      const cur = ui.doc === 'notice' ? ui.audience : isCards ? ui.cardSize : ui.pressType;
+      $('#audLabel').textContent = ui.doc === 'notice' ? '對象' : isCards ? '尺寸' : '類型';
       $('#audience').innerHTML = Object.keys(opts).map((k) => `<option value="${k}"${k === cur ? ' selected' : ''}>${opts[k].label}</option>`).join('');
     }
     $('#csvBtn').style.display = ui.doc === 'supplies' ? '' : 'none';
-    $('#page').innerHTML = window.EDRenderHTML.render(currentModel());
+    if (isCards) renderCards();
+    else $('#page').innerHTML = window.EDRenderHTML.render(currentModel());
+  }
+  // 圖卡預覽：每張圖卡一個畫布
+  function renderCards() {
+    const C = window.EDCards, view = $('#cardsView'), names = C.fileNames(ev.cards);
+    if (!ev.cards.length) { view.innerHTML = '<p class="cards-empty">尚無圖卡。請到左側「貼文圖卡」按「依貼文帶入」，或自行新增。</p>'; return; }
+    if (view.querySelectorAll('canvas').length !== ev.cards.length) {
+      view.innerHTML = ev.cards.map((c, i) => `<figure class="card-fig"><canvas data-card="${i}"></canvas><figcaption><span></span><button class="btn small" data-act="cardDownload" data-i="${i}">下載</button></figcaption></figure>`).join('');
+    }
+    ev.cards.forEach((c, i) => {
+      const fig = view.children[i];
+      fig.querySelector('span').textContent = `${names[i].folder}｜${names[i].name}`;
+      C.draw(fig.querySelector('canvas'), c, ev, ui.cardSize);
+    });
+  }
+  const canvasBlob = (cv) => new Promise((resolve) => cv.toBlob(resolve, 'image/png'));
+  async function cardsZip() {
+    const C = window.EDCards;
+    if (!ev.cards.length) { toast('尚無圖卡可下載', true); return; }
+    busy(true, '圖卡產生中…');
+    try {
+      const names = C.fileNames(ev.cards), files = [];
+      for (let i = 0; i < ev.cards.length; i++) {
+        const cv = await C.draw(document.createElement('canvas'), ev.cards[i], ev, ui.cardSize);
+        files.push({ name: `${names[i].folder}/${names[i].name}`, data: new Uint8Array(await (await canvasBlob(cv)).arrayBuffer()) });
+      }
+      const name = nextFilename('貼文圖卡', 'zip');
+      download(C.zip(files), name); toast(`已下載 ${name}（共 ${files.length} 張）`);
+    } catch (e) { console.error(e); toast('圖卡下載失敗：' + e.message, true); }
+    finally { busy(false); }
   }
   function renderAll() { renderNav(); renderForm(); renderPreview(); }
 
@@ -322,6 +375,10 @@
     posts(r) {
       if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: join(s.visual) }));
     },
+    cards(r) {
+      const types = window.EDCards.TYPES;
+      if (Array.isArray(r.cards) && r.cards.length) ev.cards = r.cards.map((c) => ({ post: String(c.post || '1'), type: types[c.type] ? c.type : 'points', title: c.title || '', sub: c.sub || '', badge: String(c.badge == null ? '' : c.badge), lines: join(c.lines) }));
+    },
   };
   async function runAI(task, arg) {
     busy(true, 'AI 撰寫中，約需 20 至 60 秒…');
@@ -341,6 +398,7 @@
       return;
     }
     if (!ev.name.trim() || !ev.schedule.length) { toast('請先填寫活動名稱與流程表，AI 才有依據', true); return; }
+    if (task === 'cards' && !ev.posts.length) { toast('請先完成社群貼文，圖卡會依貼文內容撰寫', true); return; }
     if (task === 'speech' && !ev.speeches.length) { toast('請先新增至少一位致詞人', true); return; }
     const ok = await ask('AI 代寫', 'AI 產生的內容會取代這份文件目前的對應欄位。活動名稱、流程、分組與貴賓名單會送到 AI 服務處理（不含聯絡電話與信箱）。', '開始撰寫');
     if (ok) runAI(task, task === 'press' ? ui.pressType : ui.audience);
@@ -362,18 +420,19 @@
   }
 
   // ---------- 圖片 ----------
-  function loadImage(file) {
+  function loadImage(file, path, max, keepPng) {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
       img.onload = () => {
-        // 縮到最長邊 1600 像素，避免瀏覽器儲存空間不足
-        const scale = Math.min(1, 1600 / Math.max(img.width, img.height));
+        // 縮小後再存，避免瀏覽器儲存空間不足；Logo 保留透明背景
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
         const c = document.createElement('canvas');
         c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
         const ctx = c.getContext('2d');
-        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(img, 0, 0, c.width, c.height);
-        ev.venueMap = { src: c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height };
+        if (!keepPng) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        setPath(ev, path, { src: keepPng ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.85), w: c.width, h: c.height });
         save(); renderForm(); renderPreview();
       };
       img.src = reader.result;
@@ -387,8 +446,8 @@
     if (path && e.target.closest('#form')) { setPath(ev, path, e.target.value); touch(); }
   });
   document.addEventListener('change', (e) => {
-    if (e.target.id === 'audience') { if (ui.doc === 'press') ui.pressType = e.target.value; else ui.audience = e.target.value; renderForm(); renderPreview(); }
-    if (e.target.id === 'imgFile' && e.target.files[0]) loadImage(e.target.files[0]);
+    if (e.target.id === 'audience') { if (ui.doc === 'press') ui.pressType = e.target.value; else if (ui.doc === 'cards') ui.cardSize = e.target.value; else ui.audience = e.target.value; renderForm(); renderPreview(); }
+    if (e.target.classList.contains('img-file') && e.target.files[0]) loadImage(e.target.files[0], e.target.dataset.imgpath, Number(e.target.dataset.max), !!e.target.dataset.png);
     if (e.target.id === 'projectFile' && e.target.files[0]) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -419,7 +478,18 @@
       else { const j = act === 'rowUp' ? i - 1 : i + 1; if (j < 0 || j >= arr.length) return; [arr[i], arr[j]] = [arr[j], arr[i]]; }
       e.preventDefault(); renderForm(); touch();
     }
-    else if (act === 'imgRemove') { ev.venueMap = null; save(); renderForm(); renderPreview(); }
+    else if (act === 'imgRemove') { setPath(ev, btn.dataset.path, null); save(); renderForm(); renderPreview(); }
+    else if (act === 'cardsZip') cardsZip();
+    else if (act === 'cardDownload') {
+      const i = Number(btn.dataset.i), nm = window.EDCards.fileNames(ev.cards)[i];
+      download(await canvasBlob($(`canvas[data-card="${i}"]`)), `${nm.folder}-${nm.name}`);
+    }
+    else if (act === 'cardsFromPosts') {
+      if (!ev.posts.length) { toast('請先完成社群貼文並填寫「搭配圖卡」', true); return; }
+      if (ev.cards.length && !(await ask('依貼文帶入', '目前的圖卡會被取代。', '重新帶入'))) return;
+      ev.cards = window.EDCards.fromPosts(ev); save(); renderForm(); renderPreview();
+      toast(ev.cards.length ? `已建立 ${ev.cards.length} 張圖卡` : '貼文尚未填寫「搭配圖卡」', !ev.cards.length);
+    }
     else if (act === 'word') exportWord();
     else if (act === 'print') window.print();
     else if (act === 'copy') copyText();

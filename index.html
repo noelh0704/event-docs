@@ -47,13 +47,14 @@
         <label class="aud" id="audWrap"><span id="audLabel">對象</span>
           <select id="audience"></select>
         </label>
-        <button class="btn" data-act="copy">複製文字</button>
-        <button class="btn" data-act="print">列印／PDF</button>
+        <button class="btn" data-act="copy" data-for="doc">複製文字</button>
+        <button class="btn" data-act="print" data-for="doc">列印／PDF</button>
         <button class="btn" data-act="csv" id="csvBtn">匯出 CSV</button>
-        <button class="btn primary" data-act="word">匯出 Word</button>
+        <button class="btn primary" data-act="word" data-for="doc">匯出 Word</button>
+        <button class="btn primary" data-act="cardsZip" id="zipBtn">下載全部圖卡</button>
       </div>
     </div>
-    <div class="paper-wrap"><article id="page" class="paper"></article></div>
+    <div class="paper-wrap"><article id="page" class="paper"></article><div id="cardsView" class="cards-view" hidden></div></div>
   </section>
 </main>
 
@@ -116,6 +117,7 @@
 <script src="js/templates.js"></script>
 <script src="js/render-html.js"></script>
 <script src="js/render-docx.js"></script>
+<script src="js/cards.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/app.js"></script>
 </body>

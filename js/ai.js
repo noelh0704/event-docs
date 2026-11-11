@@ -115,6 +115,20 @@ ${text}`,
 - 獎項、名額、人數、成果若未提供，用「○○」表示，不可編造。
 活動資料：${eventBrief(ev)}`;
 
+  TASKS.cards = (ev) => `請依下列各篇社群貼文，撰寫每篇要搭配的圖卡文字。圖卡是用固定版型排版的，字數必須精簡。
+輸出 JSON：{"cards":[{"post":第幾篇（數字）,"type":"cover｜info｜points｜lottery｜countdown","title":"標題","sub":"副標","badge":"角標","lines":["條列內容"]}]}
+版型與欄位用法：
+- cover（首圖）：title 為大標（14 字內，可用活動名稱或該篇主題）；sub 為一句副標（20 字內）；lines 放日期與地點，各一行；badge 為右上角小標籤（6 字內，例如「免費參加」，沒有就空字串）。
+- info（資訊卡）：title 為小標；lines 每行寫成「項目｜內容」，最多 6 行，項目 4 字內。
+- points（重點條列卡）：title 為小標；lines 每行一個重點，最多 5 行，每行 22 字內。
+- lottery（抽獎卡）：title 例如「留言抽好禮」；lines 為參加步驟，最多 4 行；sub 為獎項與名額；badge 為截止日（例如「3/18 截止」）。
+- countdown（倒數卡）：badge 只放倒數天數的數字；sub 為「倒數」或「報名倒數」；title 為活動名稱或主題；lines 放截止時間與地點。
+規則：
+- 每篇貼文 1 至 3 張，第一張一律是 cover；圖卡數量與內容請對應該篇貼文「搭配圖卡」欄位的規劃。
+- 只使用貼文與活動資料中出現的資訊；獎項、名額、天數未提供時用「○○」表示，不可編造。
+各篇貼文：${JSON.stringify((ev.posts || []).map((p, i) => ({ 篇次: i + 1, 主題: p.stage, 曝光日期: p.date, 文案: String(p.body || '').slice(0, 600), 搭配圖卡: p.visual })))}
+活動資料：${eventBrief(ev)}`;
+
   function parseJSON(text) {
     let s = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
     const a = s.indexOf('{'), b = s.lastIndexOf('}');

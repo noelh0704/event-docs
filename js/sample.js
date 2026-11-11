@@ -92,6 +92,14 @@ const SAMPLE_EVENT = {
     { platform: 'Facebook', stage: '活動上線', date: '3/5', body: '【春日好食光．在地好物集合】✨ 2027 港都春日市集 來了！\n\n這個春天，你想帶什麼回家？\n是剛出爐的麵包\n還是一束路邊看不到的花\n\n🌿 在地小農、職人品牌一次集合\n🎤 舞台演出整個下午不間斷\n👨‍👩‍👧 親子體驗免費玩\n\n-\n📅 3/20（六）14:00－20:00\n📍 示範市民廣場\n👉 活動資訊：（連結）', tags: '#活動上線 #週末去哪裡', visual: '首圖（主視覺＋日期地點）\n市集亮點\n舞台節目表' },
     { platform: 'Facebook', stage: '倒數加催與抽獎', date: '3/15', body: '📣 你身邊，有沒有一個很愛逛市集的人？\n\n可能是那個「看到手作就走不動」的人\n也可能是那個「每次都說只逛不買」的人\n\n#看到這裡你想起了誰\n\n-\n🎁 揪他一起來，還有機會帶好禮回家\n① 按讚這篇貼文\n② @一位你想一起逛市集的朋友\n③ 留言告訴我們「你最想在市集遇見什麼」\n\n🎁 抽出 5 位送在地好物組\n至 3/18 截止，記得回來看留言區有沒有上榜', tags: '#抽獎活動 #倒數5天', visual: '首圖（倒數 5 天）\n抽好禮' },
   ],
+  brand: { primary: '#1d2b3a', secondary: '#d9772b', logo: null, bg: null },
+  cards: [
+    { post: '1', type: 'cover', title: '2027 港都春日市集', sub: '春日好食光・在地好物集合', badge: '免費入場', lines: '3/20（六）14:00－20:00\n示範市民廣場' },
+    { post: '1', type: 'points', title: '市集亮點', sub: '', badge: '', lines: '在地小農、職人品牌一次集合\n舞台演出整個下午不間斷\n親子體驗免費玩' },
+    { post: '1', type: 'info', title: '活動資訊', sub: '', badge: '', lines: '日期｜3/20（六）\n時間｜14:00－20:00\n地點｜示範市民廣場\n交通｜捷運示範站 2 號出口步行 5 分鐘' },
+    { post: '2', type: 'countdown', title: '2027 港都春日市集', sub: '倒數', badge: '5', lines: '3/20（六）14:00 開市\n示範市民廣場' },
+    { post: '2', type: 'lottery', title: '留言抽好禮', sub: '在地好物組　共 5 名', badge: '3/18 截止', lines: '按讚這篇貼文\n標記一位想一起逛市集的朋友\n留言「你最想在市集遇見什麼」' },
+  ],
   _ver: {},
 };
 if (typeof module !== 'undefined') module.exports = SAMPLE_EVENT;

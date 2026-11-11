@@ -50,6 +50,21 @@ with sync_playwright() as p:
     pg.click('[data-section="press"]'); pg.screenshot(path='test/out/ui-press.png')
     with pg.expect_download() as d: pg.click('[data-act="word"]')
     print('download3:', d.value.suggested_filename)
+    # 貼文圖卡
+    pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
+    pg.click('[data-section="cards"]'); pg.wait_for_timeout(600); pg.screenshot(path='test/out/ui-cards.png')
+    with pg.expect_download() as d: pg.click('#zipBtn')
+    d.value.save_as('test/out/cards-sample.zip')
+    pg.click('[data-act="cardsFromPosts"]'); pg.click('#confirmOk'); pg.wait_for_timeout(600)
+    n=pg.locator('#cardsView canvas').count(); print('cards:', n); assert n==5
+    print('auto points:', pg.input_value('[data-path="cards.1.lines"]').replace('\n',' / '))
+    with pg.expect_download() as d: pg.click('#zipBtn')
+    d.value.save_as('test/out/cards.zip'); print('zip:', d.value.suggested_filename)
+    pg.select_option('#audience','square'); pg.wait_for_timeout(300)
+    assert pg.evaluate("document.querySelector('#cardsView canvas').height")==1080
+    pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(600)
+    with pg.expect_download() as d: pg.click('#zipBtn')
+    d.value.save_as('test/out/cards-square.zip')
     # 窄螢幕
     pg.set_viewport_size({'width':420,'height':900}); pg.click('[data-section="notice"]'); pg.screenshot(path='test/out/ui-mobile.png')
     print('overflow-x:', pg.evaluate('document.documentElement.scrollWidth>innerWidth'))
