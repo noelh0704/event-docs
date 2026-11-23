@@ -38,15 +38,15 @@
     // 依內容估算列高，讓換行的文字不會被切掉
     function fitHeight(ws, r, texts) {
       const maxLines = Math.max(1, ...texts.map(([t, w]) => lines(t).reduce((a, l) => a + Math.max(1, Math.ceil(l.length * 2 / w)), 0)));
-      ws.getRow(r).height = Math.max(20, maxLines * 17);
+      ws.getRow(r).height = Math.max(18, maxLines * 16);
     }
 
     // ---------- 報價單 ----------
     function quote(ev) {
       const q = ev.quote || {}, co = ev.company || {}, r = Q.calc(q);
       const { wb, ws } = base('報價單');
-      // 欄位：A No.｜B 品名｜C 規格／說明｜D 數量｜E 單位｜F 單價｜G 小計｜H 備註
-      [6, 20, 36, 8, 7, 12, 14, 22].forEach((w, i) => (ws.getColumn(i + 1).width = w));
+      // 欄位：A No.｜B 品名｜C 規格／說明｜D 數量｜E 單位｜F 單價｜G 小計
+      [6, 22, 42, 8, 7, 12, 14].forEach((w, i) => (ws.getColumn(i + 1).width = w));
       let row = 1;
       const logo = ev.brand && ev.brand.logo;
       if (logo && logo.src) {
@@ -57,12 +57,12 @@
       const head = [has(co.name) ? co.name : ev.orgExec || CONFIG.company.name].concat(
         [has(co.taxId) && `統一編號：${co.taxId}`, has(co.address) && `地址：${co.address}`, has(co.phone) && `電話：${co.phone}`, has(co.email) && `E-mail：${co.email}`].filter(Boolean));
       head.forEach((t, i) => {
-        ws.mergeCells(row, 4, row, 8);
+        ws.mergeCells(row, 4, row, 7);
         put(ws, `D${row}`, t, { align: { horizontal: 'right' }, font: i === 0 ? { bold: true, size: D.h2Pt } : {} });
         row++;
       });
       row++;
-      ws.mergeCells(row, 1, row, 8);
+      ws.mergeCells(row, 1, row, 7);
       put(ws, `A${row}`, '報價單', { align: { horizontal: 'center' }, font: { bold: true, size: D.titlePt, color: { argb: 'FF' + D.accent } } });
       ws.getRow(row).height = 36;
       row += 2;
@@ -77,19 +77,19 @@
         ['客戶地址', q.clientAddr, '有效期限', q.validUntil],
       ];
       info.forEach((it) => {
-        ws.mergeCells(row, 1, row, 2); ws.mergeCells(row, 4, row, 5); ws.mergeCells(row, 6, row, 8);
+        ws.mergeCells(row, 1, row, 2); ws.mergeCells(row, 4, row, 5); ws.mergeCells(row, 6, row, 7);
         put(ws, `A${row}`, it[0], { fill: D.headFill, font: { bold: true } });
         put(ws, `C${row}`, it[1] || '');
         put(ws, `D${row}`, it[2], { fill: D.headFill, font: { bold: true } });
         put(ws, `F${row}`, it[3] || '');
-        boxRange(ws, row, 1, 8);
-        fitHeight(ws, row, [[it[1], 36], [it[3], 40]]);
+        boxRange(ws, row, 1, 7);
+        fitHeight(ws, row, [[it[1], 42], [it[3], 26]]);
         row++;
       });
       row++;
 
       // 品項明細
-      const hdr = ['No.', '品名', '規格／說明', '數量', '單位', '單價', '小計', '備註'];
+      const hdr = ['No.', '品名', '規格／說明', '數量', '單位', '單價', '小計'];
       hdr.forEach((h, i) => put(ws, `${col(i + 1)}${row}`, h, { border: true, fill: D.headFill, font: { bold: true }, align: { horizontal: 'center' } }));
       const headerRow = row;
       row++;
@@ -103,7 +103,6 @@
           ws.mergeCells(row, 2, row, 6);
           put(ws, `B${row}`, g.cat, { fill: 'F3EFE8', font: { bold: true } });
           boxRange(ws, row, 2, 6);
-          put(ws, `H${row}`, '', { border: true, fill: 'F3EFE8' });
           row++;
         }
         const first = row;
@@ -116,8 +115,7 @@
           put(ws, `E${row}`, it.unit || '', { border: true, align: { horizontal: 'center' } });
           put(ws, `F${row}`, it.priceN == null ? '' : it.priceN, { border: true, num: true, align: { horizontal: 'right' } });
           put(ws, `G${row}`, { formula: `IF(OR(D${row}="",F${row}=""),"",D${row}*F${row})`, result: it.sub == null ? '' : it.sub }, { border: true, num: true, align: { horizontal: 'right' } });
-          put(ws, `H${row}`, it.note || '', { border: true });
-          fitHeight(ws, row, [[it.name, 20], [it.spec, 36], [it.note, 22]]);
+          fitHeight(ws, row, [[it.name, 22], [it.spec, 42]]);
           row++;
         });
         const range = `G${first}:G${row - 1}`;
@@ -132,7 +130,6 @@
         put(ws, `A${row}`, label, { font: { bold: true }, align: { horizontal: 'right' }, fill: strong ? D.headFill : undefined });
         boxRange(ws, row, 1, 6);
         put(ws, `G${row}`, formula == null ? '' : { formula, result }, { border: true, num: true, font: { bold: true }, align: { horizontal: 'right' }, fill: strong ? D.headFill : undefined });
-        put(ws, `H${row}`, '', { border: true, fill: strong ? D.headFill : undefined });
         return `G${row++}`;
       };
       const tag = r.taxed ? '含稅' : '未稅';
@@ -152,21 +149,21 @@
         total('總計（含稅）', `${B}+${t}`, r.total, true);
       }
       row++;
-      ws.mergeCells(row, 1, row, 8);
+      ws.mergeCells(row, 1, row, 7);
       put(ws, `A${row}`, `總計金額：${r.totalText}（含稅）`, { font: { bold: true } });
       row++;
-      ws.mergeCells(row, 1, row, 8);
+      ws.mergeCells(row, 1, row, 7);
       put(ws, `A${row}`, '※ 大寫金額依匯出時的總計產生；在 Excel 修改數量或單價後，請一併更正此列。', { font: { color: { argb: 'FF777777' } } });
       row += 2;
 
       // 條件事項、匯款資訊、回簽
       const para = (title, items, numbered) => {
-        ws.mergeCells(row, 1, row, 8);
+        ws.mergeCells(row, 1, row, 7);
         put(ws, `A${row}`, title, { font: { bold: true, size: D.h2Pt, color: { argb: 'FF' + D.accent } } });
         row++;
         items.forEach((t, i) => {
           put(ws, `A${row}`, numbered ? i + 1 : '', { align: { horizontal: 'center', vertical: 'top' } });
-          ws.mergeCells(row, 2, row, 8);
+          ws.mergeCells(row, 2, row, 7);
           put(ws, `B${row}`, t, { align: { vertical: 'top' } });
           fitHeight(ws, row, [[t, 120]]);
           row++;
@@ -175,17 +172,14 @@
       };
       para('條件事項', lines(has(q.terms) ? q.terms : T.QUOTE_TERMS), true);
       if (lines(co.bank).length) para('匯款資訊', lines(co.bank), false);
-      ws.mergeCells(row, 1, row, 4); ws.mergeCells(row, 5, row, 8);
-      put(ws, `A${row}`, '報價單位', { fill: D.headFill, font: { bold: true }, align: { horizontal: 'center' } });
-      put(ws, `E${row}`, '客戶確認回簽', { fill: D.headFill, font: { bold: true }, align: { horizontal: 'center' } });
-      boxRange(ws, row, 1, 8); row++;
-      ws.mergeCells(row, 1, row, 4); ws.mergeCells(row, 5, row, 8);
-      put(ws, `A${row}`, '（用印）', { align: { horizontal: 'center' } });
-      put(ws, `E${row}`, '（簽名／用印）\n\n\n日期：　　　年　　　月　　　日', { align: { horizontal: 'center' } });
-      boxRange(ws, row, 1, 8);
-      ws.getRow(row).height = 120;
+      // 回簽欄做成單一列（標題與簽名空間在同一格），列印時不會被拆到兩頁
+      const signCell = (title, body) => ({ richText: [{ text: title + '\n', font: Object.assign({}, FONT, { bold: true }) }, { text: body, font: FONT }] });
+      ws.mergeCells(row, 1, row, 3); ws.mergeCells(row, 4, row, 7);
+      put(ws, `A${row}`, signCell('報價單位', '\n（用印）\n\n'), { align: { horizontal: 'center', vertical: 'top' } });
+      put(ws, `D${row}`, signCell('客戶確認回簽', '\n（簽名／用印）\n\n日期：　　　年　　　月　　　日'), { align: { horizontal: 'center', vertical: 'top' } });
+      boxRange(ws, row, 1, 7);
+      ws.getRow(row).height = 86;
 
-      ws.pageSetup.printTitlesRow = `${headerRow}:${headerRow}`;
       ws.headerFooter.oddFooter = '&C第 &P 頁，共 &N 頁';
       return wb;
     }

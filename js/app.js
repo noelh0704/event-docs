@@ -243,9 +243,9 @@
           f('quote.projectName', '專案名稱', { wide: true, ph: ev.name }), f('quote.execDate', '執行日期', { ph: ev.dateText }), f('quote.execPlace', '執行地點', { ph: ev.venue }),
         ] },
         { type: 'title', text: '品項' },
-        { type: 'rows', path: 'quote.items', blank: { cat: '', name: '', spec: '', qty: '1', unit: '式', price: '', note: '' }, grid: '1.4fr 1.6fr .7fr .6fr 1fr', cols: [
+        { type: 'rows', path: 'quote.items', blank: { cat: '', name: '', spec: '', qty: '1', unit: '式', price: '' }, grid: '1.4fr 1.6fr .7fr .6fr 1fr', cols: [
           f('cat', '大項'), f('name', '品名'), f('qty', '數量'), f('unit', '單位'), f('price', '單價'),
-          f('spec', '規格／說明', { type: 'textarea', full: true, rows: 2 }), f('note', '備註', { full: true }),
+          f('spec', '規格／說明', { type: 'textarea', full: true, rows: 2 }),
         ] },
         { type: 'title', text: '計價' },
         { type: 'fields', fields: [
@@ -493,7 +493,7 @@
       if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: join(s.visual) }));
     },
     quote(r) {
-      if (Array.isArray(r.items) && r.items.length) ev.quote.items = r.items.map((it) => ({ cat: it.cat || '', name: it.name || '', spec: it.spec || '', qty: String(it.qty == null ? '' : it.qty), unit: it.unit || '', price: '', note: it.note || '' }));
+      if (Array.isArray(r.items) && r.items.length) ev.quote.items = r.items.map((it) => ({ cat: it.cat || '', name: it.name || '', spec: it.spec || '', qty: String(it.qty == null ? '' : it.qty), unit: it.unit || '', price: '' }));
     },
     score(r) {
       if (Array.isArray(r.criteria) && r.criteria.length) ev.score.criteria = r.criteria.map((c) => ({ item: c.item || '', desc: c.desc || '', weight: String(c.weight == null ? '' : c.weight).replace('%', '') }));

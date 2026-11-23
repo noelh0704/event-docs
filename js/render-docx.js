@@ -54,20 +54,18 @@
         trs.push(new docx.TableRow({ tableHeader: true, children: head.map((h, i) => cell(h, w[i], { fill: D.headFill, bold: true, center: true })) }));
       }
       (rows.length ? rows : [head.map(() => '')]).forEach((r) => {
-        // 大項列：編號＋名稱（跨欄）＋大項小計；合計列：標題（跨欄）＋金額
+        // 大項列：編號＋名稱（跨欄）＋大項小計；合計列：標題（跨欄）＋金額（金額都在最後一欄）
         if (r.kind === 'cat') {
           trs.push(new docx.TableRow({ cantSplit: true, children: [
             cell(r.no, w[0], { fill: 'F3EFE8', bold: true, align: 'c', keepNext: true }),
-            cell(r.text, sumW(w, 1, n - 2), { fill: 'F3EFE8', bold: true, span: n - 3, keepNext: true }),
-            cell(r.value, w[n - 2], { fill: 'F3EFE8', bold: true, align: 'r', keepNext: true }),
-            cell('', w[n - 1], { fill: 'F3EFE8', keepNext: true }),
+            cell(r.text, sumW(w, 1, n - 1), { fill: 'F3EFE8', bold: true, span: n - 2, keepNext: true }),
+            cell(r.value, w[n - 1], { fill: 'F3EFE8', bold: true, align: 'r', keepNext: true }),
           ] }));
         } else if (r.kind === 'total') {
           const fill = r.strong ? D.headFill : undefined;
           trs.push(new docx.TableRow({ cantSplit: true, children: [
-            cell(r.label, sumW(w, 0, n - 2), { span: n - 2, bold: true, align: 'r', fill }),
-            cell(r.value, w[n - 2], { bold: true, align: 'r', fill }),
-            cell('', w[n - 1], { fill }),
+            cell(r.label, sumW(w, 0, n - 1), { span: n - 1, bold: true, align: 'r', fill }),
+            cell(r.value, w[n - 1], { bold: true, align: 'r', fill }),
           ] }));
         } else {
           trs.push(new docx.TableRow(Object.assign({ cantSplit: true, children: r.map((c, i) => cell(c, w[i], { align: align && align[i] })) }, rowHeight(rowH))));

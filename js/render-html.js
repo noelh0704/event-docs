@@ -25,9 +25,9 @@
         const head = b.head.map((h) => `<th>${esc(h)}</th>`).join('');
         const tr = b.rowH ? ` style="height:${b.rowH}px"` : '';
         const row = (r) => {
-          // 大項列：編號＋名稱（跨欄）＋大項小計；合計列：標題（跨欄）＋金額
-          if (r.kind === 'cat') return `<tr class="d-cat"><td class="ctr">${esc(r.no)}</td><td colspan="${n - 3}">${esc(r.text)}</td><td class="num">${esc(r.value)}</td><td></td></tr>`;
-          if (r.kind === 'total') return `<tr class="d-total${r.strong ? ' strong' : ''}"><td colspan="${n - 2}" class="num">${esc(r.label)}</td><td class="num">${esc(r.value)}</td><td></td></tr>`;
+          // 大項列：編號＋名稱（跨欄）＋大項小計；合計列：標題（跨欄）＋金額（金額都在最後一欄）
+          if (r.kind === 'cat') return `<tr class="d-cat"><td class="ctr">${esc(r.no)}</td><td colspan="${n - 2}">${esc(r.text)}</td><td class="num">${esc(r.value)}</td></tr>`;
+          if (r.kind === 'total') return `<tr class="d-total${r.strong ? ' strong' : ''}"><td colspan="${n - 1}" class="num">${esc(r.label)}</td><td class="num">${esc(r.value)}</td></tr>`;
           return `<tr${tr}>${r.map((c, i) => `<td${al(i)}>${br(c)}</td>`).join('')}</tr>`;
         };
         const rows = b.rows.length ? b.rows.map(row).join('') : `<tr><td colspan="${n}" class="d-empty">（尚無資料）</td></tr>`;

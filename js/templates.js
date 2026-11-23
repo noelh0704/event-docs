@@ -473,7 +473,7 @@
       if (g.cat) rows.push({ kind: 'cat', no: g.label, text: g.cat, value: Q.fmt(g.sum) });
       g.items.forEach((it) => {
         n++;
-        rows.push([String(g.cat ? g.items.indexOf(it) + 1 : n), it.name, it.spec, it.qtyN == null ? it.qty || '' : String(it.qtyN), it.unit, Q.fmt(it.priceN), it.sub == null ? '' : Q.fmt(it.sub), it.note]);
+        rows.push([String(g.cat ? g.items.indexOf(it) + 1 : n), it.name, it.spec, it.qtyN == null ? it.qty || '' : String(it.qtyN), it.unit, Q.fmt(it.priceN), it.sub == null ? '' : Q.fmt(it.sub)]);
       });
     });
     const tag = r.taxed ? '含稅' : '未稅';
@@ -488,8 +488,8 @@
       rows.push({ kind: 'total', label: '總計（含稅）', value: Q.fmt(r.total), strong: true });
     }
     b.push({
-      t: 'table', head: ['No.', '品名', '規格／說明', '數量', '單位', '單價', '小計', '備註'],
-      widths: [7, 16, 25, 8, 8, 12, 13, 11], align: ['c', 'l', 'l', 'r', 'c', 'r', 'r', 'l'], rows,
+      t: 'table', head: ['No.', '品名', '規格／說明', '數量', '單位', '單價', '小計'],
+      widths: [7, 18, 33, 9, 8, 12, 13], align: ['c', 'l', 'l', 'r', 'c', 'r', 'r'], rows,
     });
     b.push({ t: 'p', text: `總計金額：${r.totalText}（含稅）`, bold: true });
     if (r.missing) b.push({ t: 'note', text: `※ 尚有 ${r.missing} 個品項未填數量或單價，未計入金額。` });
