@@ -1,3 +1,4 @@
+import re
 # 介面測試：載入頁面、切換章節、模擬 AI 回應、匯出 Word
 import json, sys
 from playwright.sync_api import sync_playwright
@@ -7,6 +8,9 @@ with sync_playwright() as p:
     pg=b.new_page(viewport={'width':1500,'height':950})
     pg.on('console', lambda m: errs.append(m.text) if m.type=='error' else None)
     pg.on('pageerror', lambda e: errs.append(str(e)))
+    # 測試時略過登入畫面：把 config.js 的帳號清單換成空的
+    cfg=re.sub(r'\n    users: \[[\s\S]*?\n    \],', '\n    users: [],', open('js/config.js',encoding='utf-8').read())
+    pg.route('**/js/config.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=cfg))
     pg.goto('http://localhost:8765/index.html'); pg.wait_for_selector('#page h1')
     pg.screenshot(path='test/out/ui-basic.png')
     for s in ['schedule','teams','vips','notice','mc','manual','supplies']:

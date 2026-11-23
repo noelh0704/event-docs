@@ -38,6 +38,7 @@ const CONFIG = {
   auth: {
     keepDays: 7,      // 勾選「保持登入」時的天數；未勾選則關閉分頁即登出（最長 12 小時）
     users: [
+      { user: 'risingms01', salt: '75sJuWAlT4IbnWY0lJKamg==', hash: 'RS+plrN9+skfRQs/LgBz5x+S8m21Bepioea7SrCkt+0=', iterations: 210000 },
     ],
   },
   // 瀏覽器儲存用的鍵名
