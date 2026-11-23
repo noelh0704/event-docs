@@ -17,12 +17,20 @@
       case 'break': return '<div class="d-break"></div>';
       case 'kv':
         return `<table class="d-kv"><tbody>${b.rows.map((r) => `<tr${b.rowH ? ` style="height:${b.rowH}px"` : ''}><th>${esc(r[0])}</th><td>${br(r[1])}</td></tr>`).join('')}</tbody></table>`;
+      case 'info4':
+        return `<table class="d-info4"><colgroup><col style="width:16%"><col style="width:34%"><col style="width:16%"><col style="width:34%"></colgroup><tbody>${b.rows.map((r) => `<tr><th>${esc(r[0])}</th><td>${br(r[1])}</td><th>${esc(r[2])}</th><td>${br(r[3])}</td></tr>`).join('')}</tbody></table>`;
       case 'table': {
+        const n = b.head.length, al = (i) => (b.align && b.align[i] === 'r' ? ' class="num"' : b.align && b.align[i] === 'c' ? ' class="ctr"' : '');
         const cols = b.widths.map((w) => `<col style="width:${w}%">`).join('');
         const head = b.head.map((h) => `<th>${esc(h)}</th>`).join('');
-        const rows = b.rows.length
-          ? b.rows.map((r) => `<tr${b.rowH ? ` style="height:${b.rowH}px"` : ''}>${r.map((c) => `<td>${br(c)}</td>`).join('')}</tr>`).join('')
-          : `<tr><td colspan="${b.head.length}" class="d-empty">（尚無資料）</td></tr>`;
+        const tr = b.rowH ? ` style="height:${b.rowH}px"` : '';
+        const row = (r) => {
+          // 大項列：編號＋名稱（跨欄）＋大項小計；合計列：標題（跨欄）＋金額
+          if (r.kind === 'cat') return `<tr class="d-cat"><td class="ctr">${esc(r.no)}</td><td colspan="${n - 3}">${esc(r.text)}</td><td class="num">${esc(r.value)}</td><td></td></tr>`;
+          if (r.kind === 'total') return `<tr class="d-total${r.strong ? ' strong' : ''}"><td colspan="${n - 2}" class="num">${esc(r.label)}</td><td class="num">${esc(r.value)}</td><td></td></tr>`;
+          return `<tr${tr}>${r.map((c, i) => `<td${al(i)}>${br(c)}</td>`).join('')}</tr>`;
+        };
+        const rows = b.rows.length ? b.rows.map(row).join('') : `<tr><td colspan="${n}" class="d-empty">（尚無資料）</td></tr>`;
         return `<table class="d-table"><colgroup>${cols}</colgroup><thead><tr>${head}</tr></thead><tbody>${rows}</tbody></table>`;
       }
       case 'image':
@@ -33,7 +41,9 @@
   }
 
   function render(model) {
-    let html = (model.pretitle ? `<p class="d-pretitle">${esc(model.pretitle)}</p>` : '') + `<h1 class="d-title">${esc(model.title)}</h1>` + (model.subtitle ? `<p class="d-subtitle">${esc(model.subtitle)}</p>` : '<p class="d-subtitle"></p>');
+    const lh = model.letterhead;
+    let html = lh ? `<div class="d-letterhead">${lh.logo && lh.logo.src ? `<img src="${lh.logo.src}" alt="">` : ''}<div><div class="d-lh-name">${esc(lh.name)}</div>${lh.lines.map((l) => `<div>${esc(l)}</div>`).join('')}</div></div>` : '';
+    html += (model.pretitle ? `<p class="d-pretitle">${esc(model.pretitle)}</p>` : '') + `<h1 class="d-title">${esc(model.title)}</h1>` + (model.subtitle ? `<p class="d-subtitle">${esc(model.subtitle)}</p>` : '<p class="d-subtitle"></p>');
     if (model.toc) {
       const heads = model.blocks.filter((b) => b.t === 'h1' || b.t === 'h2');
       html += `<div class="d-toc"><div class="d-toc-title">目錄</div>${heads.map((h) => `<div class="d-toc-${h.t}">${esc(h.text)}</div>`).join('')}<div class="d-toc-hint">匯出 Word 後為可更新的正式目錄（含頁碼）</div></div>`;

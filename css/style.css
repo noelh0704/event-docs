@@ -95,6 +95,16 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
 .paper ul { list-style: none; }
 .paper ul li::before { content: "▶"; font-size: .7em; margin-left: -18px; margin-right: 8px; vertical-align: 2px; }
 .d-note { color: #555; }
+.d-letterhead { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 18px; text-align: right; font-size: 13.5px; color: #333; }
+.d-letterhead > div { margin-left: auto; }
+.d-letterhead img { max-height: 60px; max-width: 200px; }
+.d-lh-name { font-weight: 700; font-size: 16px; color: var(--ink); }
+.paper table.d-info4 th { background: var(--head); text-align: left; }
+.paper td.num { text-align: right; white-space: nowrap; }
+.paper td.ctr { text-align: center; }
+.paper tr.d-cat td { background: #f3efe8; font-weight: 700; }
+.paper tr.d-total td { font-weight: 700; }
+.paper tr.d-total.strong td { background: var(--head); font-size: 1.05em; }
 .d-break { border-top: 2px dashed var(--line); margin: 30px -60px; page-break-after: always; }
 .d-pretitle { text-align: center; font-weight: 700; font-size: 16px; margin: 0 0 6px; }
 .d-indent { text-indent: 2em; }
@@ -113,6 +123,12 @@ textarea { resize: vertical; min-height: 64px; line-height: 1.55; }
 .d-toc-h2 { padding-left: 24px; }
 .d-toc-hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 6px; }
 .d-footer { text-align: center; color: #555; margin-top: 36px; padding-top: 10px; border-top: 1px solid var(--line); }
+
+/* 報價單金額摘要 */
+.quote-sum { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); padding: 10px 14px; margin: 4px 0 10px; }
+.quote-sum div { display: flex; justify-content: space-between; padding: 2px 0; }
+.quote-sum div:last-of-type { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px; font-size: 1.08em; }
+.quote-sum p { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
 
 /* 貼文圖卡 */
 .cards-view { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; max-width: 1100px; margin: 0 auto; }

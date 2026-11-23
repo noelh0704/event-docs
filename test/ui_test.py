@@ -55,6 +55,27 @@ with sync_playwright() as p:
         pg.click(f'[data-section="{s}"]'); pg.wait_for_timeout(100)
     pg.select_option('#audience','form'); pg.wait_for_timeout(100); assert '領獎確認書' in pg.inner_text('#page')
     pg.click('[data-section="signin"]'); pg.select_option('#audience','vip'); pg.wait_for_timeout(100); assert '示範市政府' in pg.inner_text('#page table.d-table')
+    # 公司資料與報價單
+    pg.click('[data-section="company"]'); pg.fill('[data-path="company.taxId"]','12345678'); pg.fill('[data-path="company.bank"]','示範銀行 示範分行'); pg.wait_for_timeout(500)
+    assert json.loads(pg.evaluate("localStorage.getItem('eventDocs.company.v1')"))['taxId']=='12345678', 'company not saved separately'
+    pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
+    pg.click('[data-section="quote"]'); pg.wait_for_timeout(200)
+    t=pg.inner_text('#page'); assert '357,000' in t and '統一編號：12345678' in t and '示範銀行' in t, 'quote preview wrong'
+    pg.fill('[data-path="quote.discount"]',''); pg.wait_for_timeout(400)
+    assert '362,250' in pg.inner_text('#quoteSum'), pg.inner_text('#quoteSum')
+    pg.select_option('[data-path="quote.priceMode"]','taxed'); pg.wait_for_timeout(400)
+    assert '345,000' in pg.inner_text('#quoteSum')
+    with pg.expect_download() as d: pg.click('#xlsxBtn')
+    d.value.save_as('test/out/ui-quote.xlsx'); print('xlsx:', d.value.suggested_filename)
+    pg.click('[data-act="new"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
+    assert pg.evaluate("JSON.parse(localStorage.getItem('eventDocs.project.v1')).company.taxId")=='12345678', 'new project lost company'
+    pg.click('[data-section="quote"]'); pg.wait_for_timeout(200)
+    assert pg.input_value('[data-path="quote.no"]').startswith('Q'), 'no default number'
+    print('auto no/date:', pg.input_value('[data-path="quote.no"]'), pg.input_value('[data-path="quote.date"]'), pg.input_value('[data-path="quote.validUntil"]'))
+    pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
+    pg.click('[data-section="supplies"]'); pg.wait_for_timeout(200)
+    with pg.expect_download() as d: pg.click('#xlsxBtn')
+    print('xlsx2:', d.value.suggested_filename)
     # 貼文圖卡
     pg.click('[data-act="sample"]'); pg.click('#confirmOk'); pg.wait_for_timeout(200)
     pg.click('[data-section="cards"]'); pg.wait_for_timeout(600); pg.screenshot(path='test/out/ui-cards.png')

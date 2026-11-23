@@ -135,6 +135,18 @@ ${text}`,
 競賽名稱：${(ev.score && ev.score.title) || '（未提供，請依活動性質判斷）'}
 活動資料：${eventBrief(ev)}`;
 
+  TASKS.quote = (ev) => `請依下列活動內容，列出報價單的品項草稿。
+輸出 JSON：{"items":[{"cat":"大項名稱","name":"品名","spec":"規格／說明","qty":數量,"unit":"單位","note":"備註"}]}
+要求：
+- 依活動執行的實際工項分大項，例如：舞台表演、互動體驗、舞台硬體與活動設備、視覺設計與活動紀錄、行政作業；依活動性質增減。
+- 每個大項 2 至 6 個品項，同一大項的品項排在一起；整體 12 至 25 項。
+- 規格／說明要寫出具體內容（例如場次、尺寸、時數、人數），能從流程表、分組與備品清單推得的就寫進去。
+- 單位使用台灣報價慣用的「式、組、位、場、份、面、小時、天」。
+- 不要提供任何價格，單價由承辦人填寫。
+- 不可編造活動資料中沒有的節目、廠商或人名。
+活動資料：${eventBrief(ev)}
+備品清單：${JSON.stringify((ev.supplies || []).slice(0, 40).map((s) => [s.area, s.item, s.qty, s.unit]))}`;
+
   function parseJSON(text) {
     let s = String(text || '').trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
     const a = s.indexOf('{'), b = s.lastIndexOf('}');

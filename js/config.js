@@ -1,8 +1,15 @@
 // ===== 全站設定：要改公司名稱、字體、AI 模型，都改這裡 =====
 const CONFIG = {
   // 公司資訊（會帶入文件頁尾與「執行單位」預設值）
+  // 統編、地址、電話、匯款資訊請在網頁的「公司資料」填寫，只存在使用者的瀏覽器，不要寫在這裡
   company: {
     name: '萊司整合行銷有限公司',
+  },
+  // 報價單預設值
+  quote: {
+    taxRate: 5,          // 營業稅率（%）
+    validDays: 30,       // 報價有效天數（自報價日期起算）
+    priceMode: 'untaxed', // 'untaxed'＝單價為未稅，另加營業稅；'taxed'＝單價已含稅
   },
   // Word 文件格式
   doc: {
@@ -29,6 +36,7 @@ const CONFIG = {
   storage: {
     project: 'eventDocs.project.v1',
     settings: 'eventDocs.settings.v1',
+    company: 'eventDocs.company.v1', // 公司資料（統編、地址、匯款資訊），所有專案共用
   },
 };
 if (typeof module !== 'undefined') module.exports = CONFIG;

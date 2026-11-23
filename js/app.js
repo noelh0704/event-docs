@@ -28,8 +28,17 @@
       sops: [], emergencies: [], supplyReminders: SAMPLE_EVENT.supplyReminders, supplies: [],
       press: blankPress(), speeches: [], posts: [],
       signin: blankSignin(), score: { title: '', judges: '3', teams: '', criteria: [] }, prizes: [], receipt: { declare: '' },
-      cards: [], brand: clone(window.EDCards.DEFAULT_BRAND), _ver: {},
+      cards: [], brand: clone(window.EDCards.DEFAULT_BRAND),
+      company: blankCompany(), quote: blankQuote(), _ver: {},
     };
+  }
+  // 公司資料：所有專案共用，存在瀏覽器（另外存一份，新專案會自動帶入）
+  function blankCompany() {
+    return Object.assign({ name: CONFIG.company.name, taxId: '', address: '', phone: '', email: '', bank: '' }, readStore(CONFIG.storage.company) || {});
+  }
+  function blankQuote() {
+    return { no: '', date: '', validUntil: '', staff: '', client: '', clientTaxId: '', clientContact: '', clientPhone: '', clientAddr: '',
+      projectName: '', execDate: '', execPlace: '', priceMode: CONFIG.quote.priceMode, taxRate: String(CONFIG.quote.taxRate), discount: '', discountLabel: '', terms: '', items: [] };
   }
   // 補齊缺少的欄位（舊版專案檔或 AI 匯入後使用）
   function normalize(e) {
@@ -49,6 +58,9 @@
     out.receipt = Object.assign({ declare: '' }, (e && e.receipt) || {});
     if (!Array.isArray(out.prizes)) out.prizes = [];
     out.brand = Object.assign(clone(window.EDCards.DEFAULT_BRAND), (e && e.brand) || {});
+    out.company = Object.assign(blankCompany(), (e && e.company) || {});
+    out.quote = Object.assign(blankQuote(), (e && e.quote) || {});
+    if (!Array.isArray(out.quote.items)) out.quote.items = [];
     ['teams', 'vips', 'schedule', 'sops', 'emergencies', 'supplies', 'speeches', 'posts', 'cards'].forEach((k) => { if (!Array.isArray(out[k])) out[k] = []; });
     out.schedule.forEach((r) => { if (r.script == null) r.script = ''; if (r.ops == null) r.ops = ''; });
     if (!out._ver || typeof out._ver !== 'object') out._ver = {};
@@ -113,6 +125,13 @@
       ] }] },
     { id: 'vips', group: '共用資料', label: '貴賓名單', hint: '依唱名順序排列。',
       parts: () => [{ type: 'rows', path: 'vips', blank: { org: '', title: '', name: '' }, grid: '2fr 1fr 1fr', cols: [f('org', '單位'), f('title', '職稱'), f('name', '姓名')] }] },
+
+    { id: 'company', group: '共用資料', label: '公司資料', hint: '報價單抬頭與匯款資訊會用到。填一次，之後的新專案都會自動帶入。這些資料只存在這個瀏覽器（與你匯出的專案檔），不會上傳到 GitHub。',
+      parts: () => [{ type: 'fields', fields: [
+        f('company.name', '公司名稱', { wide: true }), f('company.taxId', '統一編號'), f('company.phone', '電話'),
+        f('company.email', 'E-mail'), f('company.address', '地址'),
+        f('company.bank', '匯款資訊（一行一項，例如銀行分行、戶名、帳號）', { type: 'textarea', wide: true, rows: 3 }),
+      ] }] },
 
     { id: 'notice', group: '執行文件', label: '行前通知', doc: 'notice', hint: '先在右上角選「對象」，每種對象各有一份內容。留空的段落會使用公版預設文字。', ai: 'notice', aiLabel: 'AI 撰寫此對象的通知',
       parts: () => [{ type: 'fields', fields: [
@@ -209,6 +228,34 @@
           f('lines', '條列內容（一行一項）', { type: 'textarea', full: true, rows: 4 }),
         ] },
       ] },
+    { id: 'quote', group: '報價', label: '報價單', doc: 'quote', hint: '品項依「大項」分組：大項名稱相同且排在一起的品項會歸在同一組，並自動算出大項小計。數量、單價只填數字。專案名稱、執行日期、地點留空時會帶入活動基本資料。', ai: 'quote', aiLabel: 'AI 建議報價品項',
+      parts: () => [
+        { type: 'fields', fields: [
+          f('quote.no', '報價單號'), f('quote.date', '報價日期'), f('quote.validUntil', '有效期限'), f('quote.staff', '專案人員（姓名／電話）'),
+        ] },
+        { type: 'title', text: '客戶' },
+        { type: 'fields', fields: [
+          f('quote.client', '客戶名稱', { wide: true }), f('quote.clientTaxId', '統一編號'), f('quote.clientContact', '聯絡人'),
+          f('quote.clientPhone', '聯絡電話'), f('quote.clientAddr', '地址'),
+        ] },
+        { type: 'title', text: '專案' },
+        { type: 'fields', fields: [
+          f('quote.projectName', '專案名稱', { wide: true, ph: ev.name }), f('quote.execDate', '執行日期', { ph: ev.dateText }), f('quote.execPlace', '執行地點', { ph: ev.venue }),
+        ] },
+        { type: 'title', text: '品項' },
+        { type: 'rows', path: 'quote.items', blank: { cat: '', name: '', spec: '', qty: '1', unit: '式', price: '', note: '' }, grid: '1.4fr 1.6fr .7fr .6fr 1fr', cols: [
+          f('cat', '大項'), f('name', '品名'), f('qty', '數量'), f('unit', '單位'), f('price', '單價'),
+          f('spec', '規格／說明', { type: 'textarea', full: true, rows: 2 }), f('note', '備註', { full: true }),
+        ] },
+        { type: 'title', text: '計價' },
+        { type: 'fields', fields: [
+          f('quote.priceMode', '單價計價方式', { type: 'select', options: [['untaxed', '單價為未稅，另加營業稅'], ['taxed', '單價已含稅']] }), f('quote.taxRate', '營業稅率（%）'),
+          f('quote.discount', '優惠折讓金額（選填）'), f('quote.discountLabel', '優惠名稱（留空為「專案優惠」）'),
+        ] },
+        { type: 'summary' },
+        { type: 'title', text: '條件事項' },
+        { type: 'fields', fields: [f('quote.terms', '條件事項（一行一項，留空用預設）', { type: 'textarea', wide: true, rows: 6, ph: T.QUOTE_TERMS })] },
+      ] },
   ];
   const sectionById = (id) => SECTIONS.find((s) => s.id === id);
 
@@ -231,6 +278,10 @@
     return `<input type="text" data-path="${path}" value="${val}"${ph}>`;
   }
   function partHTML(p) {
+    if (p.type === 'summary') {
+      const r = window.EDQuote.calc(ev.quote), F = window.EDQuote.fmt;
+      return `<div class="quote-sum" id="quoteSum">${quoteSumHTML(r, F)}</div>`;
+    }
     if (p.type === 'title') return `<div class="part-title">${esc(p.text)}</div>`;
     if (p.type === 'fields') {
       return `<div class="fields">${p.fields.map((fd) => `<label class="${fd.wide ? 'wide' : ''}">${esc(fd.label)}${inputHTML(fd, fd.path)}</label>`).join('')}</div>`;
@@ -254,6 +305,12 @@
     }
     return '';
   }
+  function quoteSumHTML(r, F) {
+    const rows = [[`小計（${r.taxed ? '含稅' : '未稅'}）`, F(r.sum)]];
+    if (r.discount) rows.push(['優惠折讓', '-' + F(r.discount)]);
+    rows.push(['未稅金額', F(r.untaxed)], ['營業稅', F(r.tax)], ['總計（含稅）', F(r.total)]);
+    return rows.map((x) => `<div><span>${x[0]}</span><b>${x[1]}</b></div>`).join('') + `<p>${esc(r.totalText)}${r.missing ? `｜尚有 ${r.missing} 項未填數量或單價` : ''}</p>`;
+  }
   function renderForm() {
     const s = sectionById(ui.section);
     $('#sectionTitle').textContent = s.label + (VARIANTS[s.id] && s.id !== 'cards' ? `｜${VARIANTS[s.id].opts()[ui[VARIANTS[s.id].key]].label}` : '');
@@ -272,6 +329,7 @@
     const isCards = ui.doc === 'cards';
     document.querySelectorAll('[data-for="doc"]').forEach((el) => (el.style.display = isCards ? 'none' : ''));
     $('#zipBtn').style.display = isCards ? '' : 'none';
+    $('#xlsxBtn').style.display = ui.doc === 'supplies' || ui.doc === 'quote' ? '' : 'none';
     $('#page').hidden = isCards; $('#cardsView').hidden = !isCards;
     const V = VARIANTS[ui.doc];
     $('#audWrap').style.display = V ? '' : 'none';
@@ -317,11 +375,14 @@
   // ---------- 儲存 ----------
   let saveTimer = null, previewTimer = null;
   function touch() {
+    const qs = $('#quoteSum');
+    if (qs) qs.innerHTML = quoteSumHTML(window.EDQuote.calc(ev.quote), window.EDQuote.fmt);
     clearTimeout(saveTimer); clearTimeout(previewTimer);
     previewTimer = setTimeout(renderPreview, 150);
     saveTimer = setTimeout(save, 400);
   }
   function save() {
+    writeStore(CONFIG.storage.company, ev.company);
     const ok = writeStore(CONFIG.storage.project, ev);
     $('#saveState').textContent = ok ? '已自動儲存於此瀏覽器' : '儲存失敗（空間不足），請匯出專案備份';
   }
@@ -363,7 +424,27 @@
     return `${datePrefix()}_${safeName(ev.name)}-${label}_v${n}.${ext}`;
   }
 
+  // 第一次打開報價單時，自動填入單號、日期與有效期限（民國年）
+  function quoteDefaults() {
+    const q = ev.quote, now = new Date();
+    if (!q.no) q.no = `Q${datePrefix()}01`;
+    if (!q.date) q.date = window.EDQuote.rocDate(now);
+    if (!q.validUntil) q.validUntil = window.EDQuote.rocDate(new Date(now.getTime() + CONFIG.quote.validDays * 864e5)) + ' 前有效';
+    save();
+  }
+
   // ---------- 匯出 ----------
+  async function exportExcel() {
+    try {
+      const X = window.EDRenderXlsx.create(window.ExcelJS, CONFIG);
+      const isQuote = ui.doc === 'quote';
+      const wb = isQuote ? X.quote(ev) : X.supplies(ev);
+      const buf = await X.toBuffer(wb);
+      const name = nextFilename(isQuote ? '報價單' : '備品清單', 'xlsx');
+      download(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name);
+      toast(`已匯出 ${name}`);
+    } catch (e) { console.error(e); toast('Excel 匯出失敗：' + e.message, true); }
+  }
   async function exportWord() {
     try {
       const model = currentModel();
@@ -410,6 +491,9 @@
     speech(r) { (r.speeches || []).forEach((s) => { if (ev.speeches[s.index]) ev.speeches[s.index].body = join(s.body); }); },
     posts(r) {
       if (Array.isArray(r.posts) && r.posts.length) ev.posts = r.posts.map((s) => ({ platform: s.platform || '', stage: s.stage || '', date: s.date || '', body: join(s.body), tags: join(s.tags).replace(/\n/g, ' '), visual: join(s.visual) }));
+    },
+    quote(r) {
+      if (Array.isArray(r.items) && r.items.length) ev.quote.items = r.items.map((it) => ({ cat: it.cat || '', name: it.name || '', spec: it.spec || '', qty: String(it.qty == null ? '' : it.qty), unit: it.unit || '', price: '', note: it.note || '' }));
     },
     score(r) {
       if (Array.isArray(r.criteria) && r.criteria.length) ev.score.criteria = r.criteria.map((c) => ({ item: c.item || '', desc: c.desc || '', weight: String(c.weight == null ? '' : c.weight).replace('%', '') }));
@@ -502,6 +586,7 @@
     if (nav) {
       ui.section = nav.dataset.section;
       const s = sectionById(ui.section);
+      if (s.id === 'quote') quoteDefaults();
       if (s.doc) ui.doc = s.doc;
       renderAll(); $('.form-pane').scrollTop = 0; return;
     }
@@ -532,7 +617,7 @@
     else if (act === 'word') exportWord();
     else if (act === 'print') window.print();
     else if (act === 'copy') copyText();
-    else if (act === 'csv') { download(new Blob([T.suppliesCSV(ev)], { type: 'text/csv;charset=utf-8' }), nextFilename('備品清單', 'csv')); }
+    else if (act === 'xlsx') exportExcel();
     else if (act === 'ai') { e.preventDefault(); startAI(btn.dataset.task); }
     else if (act === 'settings') openSettings();
     else if (act === 'exportProject') { download(new Blob([JSON.stringify(ev, null, 2)], { type: 'application/json' }), nextFilename('專案檔', 'json')); toast('專案檔已匯出，可傳給同事匯入'); }

@@ -14,5 +14,16 @@ fs.mkdirSync('out', { recursive: true });
     if (d === 'notice' && a === 'attendee') fs.writeFileSync('out/notice.txt', T.toText(m));
   }
   fs.writeFileSync('out/supplies.csv', T.suppliesCSV(ev));
+  // 報價單：Word 與 Excel（未稅、含稅兩種計價）
+  fs.writeFileSync('out/quote.docx', await R.toBuffer(T.build('quote', ev, { company: CONFIG.company.name })));
+  const X = require('../js/render-xlsx.js').create(require('exceljs'), CONFIG);
+  fs.writeFileSync('out/quote.xlsx', Buffer.from(await X.toBuffer(X.quote(ev))));
+  const ev2 = JSON.parse(JSON.stringify(ev)); ev2.quote.priceMode = 'taxed';
+  fs.writeFileSync('out/quote-taxed.xlsx', Buffer.from(await X.toBuffer(X.quote(ev2))));
+  fs.writeFileSync('out/supplies.xlsx', Buffer.from(await X.toBuffer(X.supplies(ev))));
+  const Q = require('../js/quote.js');
+  console.log('calc untaxed', JSON.stringify((({ sum, discount, untaxed, tax, total, totalText, missing }) => ({ sum, discount, untaxed, tax, total, totalText, missing }))(Q.calc(ev.quote))));
+  console.log('calc taxed', JSON.stringify((({ sum, untaxed, tax, total }) => ({ sum, untaxed, tax, total }))(Q.calc(ev2.quote))));
+  console.log('cn', [0, 10, 105, 1005, 10500, 100000500, 230000, 1234567].map(Q.chineseAmount).join(' / '));
   console.log('done');
 })();

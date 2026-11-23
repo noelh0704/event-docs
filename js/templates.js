@@ -21,7 +21,11 @@
     signin: { label: '簽到表' },
     score: { label: '評分表' },
     receipt: { label: '得獎領據' },
+    quote: { label: '報價單' },
   };
+  const Q = root.EDQuote || (typeof require !== 'undefined' ? require('./quote.js') : null);
+  // 報價單預設條件事項（可在網頁上改寫）
+  const QUOTE_TERMS = '本報價單經雙方簽署後即生效，效力等同正式委託。\n付款條件：簽約後開立發票請款 50%，其餘款項於結案後 14 日內付清。\n雙方簽約後如遇終止，將依已投入之製作與人力成本收取費用。\n本報價單未盡事宜，雙方得另以書面協議補充，其效力等同本報價單。\n報價內容如因活動規模、場地或天候等因素調整，將另行報價確認。';
 
   // 簽到表的類型與預設欄位（「No.」會自動加在最前面）
   const SIGN_TYPES = {
@@ -449,6 +453,60 @@
     return { pretitle: ev.orgExec || '', title: '得獎者領獎確認書', subtitle: '', fileLabel: '領獎確認書', toc: false, blocks: b };
   }
 
+  // --- 報價單 ---
+  function buildQuote(ev) {
+    const q = ev.quote || {}, co = ev.company || {}, r = Q.calc(q);
+    const b = [];
+    b.push({
+      t: 'info4', rows: [
+        ['報價單號', q.no, '報價日期', q.date],
+        ['專案名稱', has(q.projectName) ? q.projectName : ev.name, '執行日期', has(q.execDate) ? q.execDate : ev.dateText],
+        ['客戶名稱', q.client, '執行地點', has(q.execPlace) ? q.execPlace : ev.venue],
+        ['客戶統編', q.clientTaxId, '專案人員', q.staff],
+        ['客戶聯絡人', q.clientContact, '聯絡電話', q.clientPhone],
+        ['客戶地址', q.clientAddr, '有效期限', q.validUntil],
+      ],
+    });
+    const rows = [];
+    let n = 0;
+    r.groups.forEach((g) => {
+      if (g.cat) rows.push({ kind: 'cat', no: g.label, text: g.cat, value: Q.fmt(g.sum) });
+      g.items.forEach((it) => {
+        n++;
+        rows.push([String(g.cat ? g.items.indexOf(it) + 1 : n), it.name, it.spec, it.qtyN == null ? it.qty || '' : String(it.qtyN), it.unit, Q.fmt(it.priceN), it.sub == null ? '' : Q.fmt(it.sub), it.note]);
+      });
+    });
+    const tag = r.taxed ? '含稅' : '未稅';
+    rows.push({ kind: 'total', label: `小計（${tag}）`, value: Q.fmt(r.sum) });
+    if (r.discount) rows.push({ kind: 'total', label: has(q.discountLabel) ? q.discountLabel : '專案優惠', value: '-' + Q.fmt(r.discount) });
+    if (r.taxed) {
+      rows.push({ kind: 'total', label: '總計（含稅）', value: Q.fmt(r.total), strong: true });
+      if (r.rate) rows.push({ kind: 'total', label: `（未稅 ${Q.fmt(r.untaxed)}／營業稅 ${Q.fmt(r.tax)}）`, value: '' });
+    } else {
+      if (r.discount) rows.push({ kind: 'total', label: '未稅金額', value: Q.fmt(r.untaxed) });
+      rows.push({ kind: 'total', label: `營業稅（${Math.round(r.rate * 1000) / 10}%）`, value: Q.fmt(r.tax) });
+      rows.push({ kind: 'total', label: '總計（含稅）', value: Q.fmt(r.total), strong: true });
+    }
+    b.push({
+      t: 'table', head: ['No.', '品名', '規格／說明', '數量', '單位', '單價', '小計', '備註'],
+      widths: [7, 16, 25, 8, 8, 12, 13, 11], align: ['c', 'l', 'l', 'r', 'c', 'r', 'r', 'l'], rows,
+    });
+    b.push({ t: 'p', text: `總計金額：${r.totalText}（含稅）`, bold: true });
+    if (r.missing) b.push({ t: 'note', text: `※ 尚有 ${r.missing} 個品項未填數量或單價，未計入金額。` });
+    b.push({ t: 'h1', text: '條件事項' });
+    // keep：條件事項、匯款資訊與回簽欄排在同一頁
+    b.push({ t: 'list', ordered: true, keep: true, items: lines(has(q.terms) ? q.terms : QUOTE_TERMS) });
+    if (lines(co.bank).length) {
+      b.push({ t: 'h1', text: '匯款資訊' });
+      b.push({ t: 'p', keep: true, text: lines(co.bank).join('\n') });
+    }
+    b.push({ t: 'table', head: ['報價單位', '客戶確認回簽'], widths: [50, 50], rows: [['（用印）', '（簽名／用印）\n\n日期：　　　年　　　月　　　日']], rowH: 100 });
+    return {
+      letterhead: { name: has(co.name) ? co.name : ev.orgExec, lines: [has(co.taxId) && `統一編號：${co.taxId}`, has(co.address) && `地址：${co.address}`, has(co.phone) && `電話：${co.phone}`, has(co.email) && `E-mail：${co.email}`].filter(Boolean), logo: ev.brand && ev.brand.logo },
+      title: '報價單', subtitle: '', fileLabel: '報價單', toc: false, blocks: b,
+    };
+  }
+
   function build(docId, ev, opts) {
     const company = (opts && opts.company) || '';
     let m;
@@ -461,9 +519,10 @@
     else if (docId === 'signin') m = buildSignin(ev, opts && opts.signType);
     else if (docId === 'score') m = buildScore(ev);
     else if (docId === 'receipt') m = buildReceipt(ev, opts && opts.receiptType);
+    else if (docId === 'quote') m = buildQuote(ev);
     else m = buildNotice(ev, opts && opts.audience);
     // 新聞稿與致詞稿以主辦單位名義對外，頁尾不放執行單位名稱
-    m.footer = docId === 'press' || docId === 'speech' ? '' : ev.orgExec || company;
+    m.footer = docId === 'press' || docId === 'speech' ? '' : docId === 'quote' ? '' : ev.orgExec || company;
     return m;
   }
 
@@ -479,22 +538,28 @@
 
   // 文件模型轉純文字（複製貼到 E-mail／LINE 用）
   function toText(model) {
-    const out = [model.pretitle, model.title, model.subtitle, ''].filter((x, i) => i === 3 || has(x));
+    const lh = model.letterhead;
+    const out = (lh ? [lh.name].concat(lh.lines, ['']) : []).concat([model.pretitle, model.title, model.subtitle, ''].filter((x, i) => i === 3 || has(x)));
     model.blocks.forEach((b) => {
       if (b.t === 'h1') out.push('', `【${b.text}】`);
       else if (b.t === 'h2') out.push('', `■ ${b.text}`);
       else if (b.t === 'p' || b.t === 'note') out.push(b.text);
       else if (b.t === 'list') b.items.forEach((x, i) => out.push(b.ordered ? `${i + 1}. ${x}` : `▶ ${x}`));
       else if (b.t === 'kv') b.rows.forEach((r) => out.push(`▶ ${r[0]}｜${r[1]}`));
+      else if (b.t === 'info4') b.rows.forEach((r) => { if (has(r[1])) out.push(`▶ ${r[0]}｜${r[1]}`); if (has(r[3])) out.push(`▶ ${r[2]}｜${r[3]}`); });
       else if (b.t === 'table') {
         out.push(b.head.join('｜'));
-        b.rows.forEach((r) => out.push(r.map((c) => String(c || '').replace(/\n/g, ' ／ ')).join('｜')));
+        b.rows.forEach((r) => {
+          if (r.kind === 'cat') out.push(`${r.no}、${r.text}｜${r.value}`);
+          else if (r.kind === 'total') out.push(`${r.label}｜${r.value}`);
+          else out.push(r.map((c) => String(c || '').replace(/\n/g, ' ／ ')).join('｜'));
+        });
       } else if (b.t === 'image') out.push(`（${b.caption}請見附件）`);
     });
     return out.join('\n').replace(/\n{3,}/g, '\n\n');
   }
 
-  const api = { AUDIENCES, PRESS_TYPES, SIGN_TYPES, RECEIPT_TYPES, RECEIPT_DECLARE, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
+  const api = { AUDIENCES, PRESS_TYPES, SIGN_TYPES, RECEIPT_TYPES, RECEIPT_DECLARE, QUOTE_TERMS, DOCS, build, suppliesCSV, toText, lines, timeRange, duration };
   root.EDTemplates = api;
   if (typeof module !== 'undefined') module.exports = api;
 })(typeof window !== 'undefined' ? window : globalThis);
