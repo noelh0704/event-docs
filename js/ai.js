@@ -155,20 +155,39 @@ ${text}`,
     catch (e) { throw new Error('AI 回傳的內容無法解析，可能是內容過長被截斷，請再試一次。'); }
   }
 
+  // 中繼服務回傳的今日使用次數；更新時通知畫面（事件名稱：ed-usage）
+  let usage = null;
+  function setUsage(u) {
+    if (!u || typeof u.remaining !== 'number') return;
+    usage = u;
+    if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('ed-usage', { detail: u }));
+  }
+  async function postProxy(settings, body) {
+    // 用 text/plain 送出，避免瀏覽器對 Apps Script 發出預檢請求
+    const res = await fetch(settings.proxyUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ code: settings.accessCode || '' }, body)),
+    });
+    if (!res.ok) throw new Error(`中繼服務回應錯誤（${res.status}）`);
+    const data = await res.json();
+    setUsage(data.usage);
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+  // 查詢今日剩餘次數（不會使用額度）；個人金鑰模式或未設定中繼服務時回傳 null
+  async function status(settings) {
+    if ((settings.aiMode || CONFIG.ai.defaultMode) !== 'proxy' || !settings.proxyUrl) return null;
+    const data = await postProxy(settings, { action: 'status' });
+    return data.usage || null;
+  }
+
   async function call(settings, prompt) {
     const mode = settings.aiMode || CONFIG.ai.defaultMode;
     const model = settings.model || CONFIG.ai.defaultModel;
     if (mode === 'proxy') {
       if (!settings.proxyUrl) throw new Error('尚未設定 AI 中繼服務網址，請先到「設定」填寫。');
-      // 用 text/plain 送出，避免瀏覽器對 Apps Script 發出預檢請求
-      const res = await fetch(settings.proxyUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ code: settings.accessCode || '', system: SYSTEM, prompt, model, maxTokens: CONFIG.ai.maxTokens }),
-      });
-      if (!res.ok) throw new Error(`中繼服務回應錯誤（${res.status}）`);
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      const data = await postProxy(settings, { system: SYSTEM, prompt, model, maxTokens: CONFIG.ai.maxTokens });
       return data.text;
     }
     if (!settings.apiKey) throw new Error('尚未設定 API 金鑰，請先到「設定」填寫。');
@@ -192,6 +211,6 @@ ${text}`,
     return parseJSON(text);
   }
 
-  root.EDAI = { run, parseJSON, TASKS, SYSTEM };
+  root.EDAI = { run, status, parseJSON, TASKS, SYSTEM, get usage() { return usage; } };
   if (typeof module !== 'undefined') module.exports = root.EDAI;
 })(typeof window !== 'undefined' ? window : globalThis);

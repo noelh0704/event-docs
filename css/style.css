@@ -25,6 +25,10 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .brand-sub { font-size: 12.5px; opacity: .75; }
 .top-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .save-state { font-size: 12.5px; opacity: .7; margin-right: 8px; }
+.usage-badge { border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.1); color: #fff; border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; margin-right: 4px; }
+.usage-badge[hidden] { display: none; }
+.usage-badge.warn { background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.usage-badge.out { background: #a8321f; border-color: #a8321f; font-weight: 600; }
 
 /* 按鈕 */
 .btn { border: 1px solid var(--line); background: var(--card); padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
@@ -172,6 +176,7 @@ html.locked .top, html.locked .layout, html.locked .toast, html.locked .busy { d
 @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 .toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 8px; z-index: 60; max-width: 90vw; }
 .toast.err { background: #a8321f; }
+.toast.warn { background: var(--accent); }
 
 /* 窄螢幕 */
 @media (max-width: 1100px) {

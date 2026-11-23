@@ -391,7 +391,7 @@
   let toastTimer = null;
   function toast(msg, isErr) {
     const el = $('#toast');
-    el.textContent = msg; el.className = 'toast' + (isErr ? ' err' : ''); el.hidden = false;
+    el.textContent = msg; el.className = 'toast' + (isErr === 'warn' ? ' warn' : isErr ? ' err' : ''); el.hidden = false;
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => (el.hidden = true), isErr ? 7000 : 2600);
   }
@@ -509,7 +509,9 @@
       const r = await window.EDAI.run(task, settings, ev, arg);
       APPLY[task](r);
       ev = normalize(ev); save(); renderAll();
-      toast('AI 已完成初稿，請檢查內容後再匯出');
+      const u = window.EDAI.usage;
+      const warn = u && u.remaining <= CONFIG.ai.warnRemaining;
+      toast('AI 已完成初稿，請檢查內容後再匯出' + (u ? `｜今日剩餘 ${u.remaining} 次` : ''), warn ? 'warn' : false);
     } catch (e) { console.error(e); toast(e.message || 'AI 發生錯誤', true); }
     finally { busy(false); }
   }
@@ -523,7 +525,10 @@
     if (!ev.name.trim() || !ev.schedule.length) { toast('請先填寫活動名稱與流程表，AI 才有依據', true); return; }
     if (task === 'cards' && !ev.posts.length) { toast('請先完成社群貼文，圖卡會依貼文內容撰寫', true); return; }
     if (task === 'speech' && !ev.speeches.length) { toast('請先新增至少一位致詞人', true); return; }
-    const ok = await ask('AI 代寫', 'AI 產生的內容會取代這份文件目前的對應欄位。活動名稱、流程、分組與貴賓名單會送到 AI 服務處理（不含聯絡電話與信箱）。', '開始撰寫');
+    const u = window.EDAI.usage;
+    if (u && u.remaining <= 0 && (settings.aiMode || CONFIG.ai.defaultMode) === 'proxy') { toast(`今日 AI 使用次數已達上限（${u.limit} 次），明天 0 點後恢復。`, true); return; }
+    const left = u && (settings.aiMode || CONFIG.ai.defaultMode) === 'proxy' ? `今日剩餘 ${u.remaining} 次，這次會用掉 1 次。` : '';
+    const ok = await ask('AI 代寫', left + 'AI 產生的內容會取代這份文件目前的對應欄位。活動名稱、流程、分組與貴賓名單會送到 AI 服務處理（不含聯絡電話與信箱）。', '開始撰寫');
     if (ok) runAI(task, task === 'press' ? ui.pressType : ui.audience);
   }
 
@@ -537,7 +542,7 @@
     d.onclose = () => {
       if (d.returnValue !== 'save') return;
       settings = { aiMode: fm.aiMode.value, proxyUrl: fm.proxyUrl.value.trim(), accessCode: fm.accessCode.value, apiKey: fm.apiKey.value.trim(), model: fm.model.value.trim() };
-      writeStore(CONFIG.storage.settings, settings); toast('設定已儲存');
+      writeStore(CONFIG.storage.settings, settings); toast('設定已儲存'); refreshUsage(true);
     };
     d.returnValue = ''; d.showModal();
   }
@@ -620,12 +625,29 @@
     else if (act === 'xlsx') exportExcel();
     else if (act === 'ai') { e.preventDefault(); startAI(btn.dataset.task); }
     else if (act === 'settings') openSettings();
+    else if (act === 'usageRefresh') refreshUsage(false);
     else if (act === 'exportProject') { download(new Blob([JSON.stringify(ev, null, 2)], { type: 'application/json' }), nextFilename('專案檔', 'json')); toast('專案檔已匯出，可傳給同事匯入'); }
     else if (act === 'importProject') $('#projectFile').click();
     else if (act === 'sample') { if (await ask('載入範例', '目前的內容會被範例活動取代。需要保留請先「匯出專案」。', '載入範例')) { ev = normalize(clone(SAMPLE_EVENT)); save(); renderAll(); } }
     else if (act === 'new') { if (await ask('新專案', '目前的內容會被清空。需要保留請先「匯出專案」。', '清空並開始')) { ev = blankEvent(); save(); ui.section = 'basic'; renderAll(); } }
   });
 
+  // ---------- AI 今日剩餘次數 ----------
+  function renderUsage(u) {
+    const el = $('#usageBadge');
+    if (!u) { el.hidden = true; return; }
+    el.hidden = false;
+    el.classList.toggle('warn', u.remaining > 0 && u.remaining <= CONFIG.ai.warnRemaining);
+    el.classList.toggle('out', u.remaining <= 0);
+    el.textContent = u.remaining > 0 ? `AI 今日剩餘 ${u.remaining}／${u.limit} 次` : `AI 今日已用完（${u.limit} 次）`;
+  }
+  async function refreshUsage(quiet) {
+    try { renderUsage(await window.EDAI.status(settings)); }
+    catch (e) { renderUsage(null); if (!quiet) toast('無法取得 AI 剩餘次數：' + e.message, true); }
+  }
+  window.addEventListener('ed-usage', (e) => renderUsage(e.detail));
+
   // ---------- 啟動 ----------
   renderAll();
+  refreshUsage(true);
 })();

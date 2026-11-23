@@ -31,6 +31,7 @@ const CONFIG = {
     maxTokens: 8000,
     directUrl: 'https://api.anthropic.com/v1/messages',
     apiVersion: '2023-06-01',
+    warnRemaining: 10, // 今日剩餘次數低於這個數字時，提醒變成橘色並跳出提示
   },
   // 登入設定：users 清單是空的時候不啟用登入畫面
   // 新增帳號：打開網站的 setup-password.html 產生一行設定碼，貼在 users: [ ] 裡（一個帳號一行）

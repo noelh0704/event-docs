@@ -6,7 +6,9 @@ with sync_playwright() as p:
     b=p.chromium.launch(executable_path='/usr/bin/google-chrome', args=['--no-sandbox'])
     ctx=b.new_context(viewport={'width':1300,'height':900}); pg=ctx.new_page()
     errs=[]; pg.on('pageerror', lambda e: errs.append(str(e)))
-    # 1) 沒有帳號時不出現登入畫面
+    # 1) 沒有帳號時不出現登入畫面（以空的帳號清單測試）
+    base=re.sub(r'\n    users: \[[\s\S]*?\n    \],', '\n    users: [\n    ],', open('js/config.js',encoding='utf-8').read())
+    ctx.route('**/js/config.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=base))
     pg.goto(BASE+'index.html'); pg.wait_for_selector('#page h1')
     assert pg.locator('#authGate').count()==0 and pg.locator('[data-auth="logout"]').count()==0
     # 2) 產生設定碼
@@ -14,7 +16,8 @@ with sync_playwright() as p:
     pg.fill('[name=user]','tester'); pg.fill('[name=pass]','Abc-12345-xyz'); pg.fill('[name=pass2]','Abc-12345-xyz'); pg.click('button[type=submit]')
     pg.wait_for_selector('#out:not([hidden])'); code=pg.inner_text('#code'); print('code:', code[:60]+'…')
     assert 'Abc-12345' not in code
-    cfg=open('js/config.js',encoding='utf-8').read().replace('    users: [\n', '    users: [\n      '+code+'\n',1)
+    cfg=base.replace('    users: [\n', '    users: [\n      '+code+'\n',1)
+    ctx.unroute('**/js/config.js')
     ctx.route('**/js/config.js', lambda r: r.fulfill(status=200, content_type='application/javascript', body=cfg))
     # 3) 登入畫面、錯誤密碼、正確密碼
     pg.goto(BASE+'index.html'); pg.wait_for_selector('#authGate')

@@ -22,6 +22,7 @@ with sync_playwright() as p:
     pg.click('[data-section="vips"]'); n=pg.locator('.row-card').count(); pg.click('[data-act="rowAdd"]'); assert pg.locator('.row-card').count()==n+1
     pg.locator('[data-act="rowDel"]').last.click(); assert pg.locator('.row-card').count()==n
     # 設定 + 模擬 AI 中繼服務
+    pg.route('https://proxy.test/**', lambda r: r.fulfill(status=200, content_type='application/json', body=json.dumps({'ok':True,'usage':{'used':5,'limit':100,'remaining':95}})))
     pg.evaluate("localStorage.setItem('eventDocs.settings.v1', JSON.stringify({aiMode:'proxy',proxyUrl:'https://proxy.test/exec',accessCode:'x'}))"); pg.reload(); pg.wait_for_selector('#page h1')
     seen={}
     def handle(route):
