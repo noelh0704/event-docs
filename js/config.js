@@ -32,6 +32,14 @@ const CONFIG = {
     directUrl: 'https://api.anthropic.com/v1/messages',
     apiVersion: '2023-06-01',
   },
+  // 登入設定：users 清單是空的時候不啟用登入畫面
+  // 新增帳號：打開網站的 setup-password.html 產生一行設定碼，貼在 users: [ ] 裡（一個帳號一行）
+  // 這裡只存加密後的雜湊值，不會有密碼本身
+  auth: {
+    keepDays: 7,      // 勾選「保持登入」時的天數；未勾選則關閉分頁即登出（最長 12 小時）
+    users: [
+    ],
+  },
   // 瀏覽器儲存用的鍵名
   storage: {
     project: 'eventDocs.project.v1',
